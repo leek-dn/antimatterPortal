@@ -132,3 +132,4 @@ Most of the code is licenced under MIT
 The only exceptions are:
 WTFPL is for the tarts library (static_assets/tarts.js) See http://www.wtfpl.net/ for more details.
 static_assets/buildings.csv and static_assets/tables.json are both based on the works of https://cookieclicker.fandom.com/wiki/Save (The CookieClicker Wikia) and those contributions are under the creative commons licence: https://creativecommons.org/licenses/by-nc/3.0/legalcode
+ISC License is for static_assets/d3.js (https://github.com/d3/d3/blob/main/LICENSE)
