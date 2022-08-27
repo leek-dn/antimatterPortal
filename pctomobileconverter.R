@@ -1,5 +1,7 @@
 # dit is een script om de Cookie Clicker save van web/desktop om te zetten naar de mobiele variant
 # gescheven door Stop5G!Nu
+# this script expects 'backupfolder' being an extracted backup folder of the adb file
+# and ../backup being a CookieClicker web save
 library(base64enc)
 library(jsonlite)
 library(XML)
@@ -23,7 +25,7 @@ if (FALSE)
 if (FALSE)
  orig_full_save <- saveTextToVector(readLines("../backup", warn = FALSE))
 # now the different save lines are stored to orig_full_save
-ccsave <- read_json("relative_cleansave.json")
+ccsave <- read_json("static_assets/relative_cleansave.json")
 version <- orig_full_save[1]
 names(orig_full_save) <- c("game.version", "empty", "run.details", "preferences", "miscellaneous.game.data", "building.data",
 						   "upgrades", "achievements", "game.buffs", if (length(orig_full_save)==10) "mod.data")
@@ -44,7 +46,7 @@ meta_save_tables <- Map(function(x) {
 	x$parameter.name <- cleanNames(x$parameter.name)
 	x
 }, meta_save_tables)
-write.csv(meta_save_tables_js$buildings, "/var/www/buildings.csv", row.names = FALSE)
+write.csv(meta_save_tables_js$buildings, "static_assets/buildings.csv", row.names = FALSE)
 rm(save_page)
 # splits de tabel in meerdere
 save_tables <- meta_save_tables$global.save
@@ -70,10 +72,10 @@ write_json(setNames(Map(function(a) {
 	write.csv(a, tc, row.names = FALSE)
 	close(tc)
 	paste0(mytext[-1], collapse = "\n")
-}, save_tables_js), gsub(".", "$", names(save_tables_js), fixed = TRUE)), "/var/www/tables.json", auto_unbox = TRUE)
-writeLines(gsub("\\.", "$", save_tables_js$building.data), "/var/www/buildings.list")
+}, save_tables_js), gsub(".", "$", names(save_tables_js), fixed = TRUE)), "static_assets/tables.json", auto_unbox = TRUE)
+writeLines(gsub("\\.", "$", save_tables_js$building.data), "oldfiles/buildings.list")
 # lees de conversion tabel in
-conversions <- read.csv("conversion.csv", sep = "|")
+conversions <- read.csv("static_assets/conversion.csv", sep = "|")
 easy_conv <- function(name, split = ";") {
 	# wat als de save file niet overeenkomt met het formaat op wikia
 	if (length(save_tables[[name]]$value.example)!=length(unlist(strsplit(orig_full_save[name], split)))) {
@@ -197,16 +199,16 @@ save_tables$achievements <- setNames(save_tables$achievements, 1:length(save_tab
 for (x in names(ccsave$achievs)) {
 	ccsave$achievs[[x]] <- unname(save_tables$achievements[sub("undefined", "0", x)])
 }
-writeLines(toJSON(ccsave, digits = 12, auto_unbox = T), "hier/apps/org.dashnet.cookieclickertrix/f/CookieClickerSave.txt")
-system("kdesu -c 'java -jar android-backup-extractor/target/abe.jar c hier.tar hier/'")
-system("java -jar android-backup-extractor/target/abe.jar pack hier.tar hier.adb")
-werkte <- system("adb restore hier.adb")
+writeLines(toJSON(ccsave, digits = 12, auto_unbox = T), "backupfolder/apps/org.dashnet.cookieclickertrix/f/CookieClickerSave.txt")
+system("kdesu -c 'java -jar ../android-backup-extractor/target/abe.jar c bu.tar backupfolder/'")
+system("java -jar ../android-backup-extractor/target/abe.jar pack bu.tar bu.adb")
+werkte <- system("adb restore bu.adb")
 if (werkte==255) {
-	lipPoort <- readline("laatste cijfer van ip:poort: ")
-	werkte <- system(paste0("adb connect 192.168.2.", lipPoort))
+	lipPoort <- readline("ip:poort: ")
+	werkte <- system(paste0("adb connect ", lipPoort))
 	if (werkte==0) {
-		system("adb restore hier.adb")
+		system("adb restore bu.adb")
 	} else {
-		stop("Kan niet verbinden met apparaat")
+		stop("cannot connect with device")
 	}
 }
