@@ -125,3 +125,10 @@ If Orteil updates one of both versions, this program needs an update as well.
 * If Orteil updates **android version**, some things might be convertable that weren't before. Then one need to change `conversion.csv`. If the setting or save item is not 1 on 1 convertable one needs to edit `verwerkSave` function in the HTML file as well. Also the new setting(s) can result in a new clean save being made. So `relative_cleansave.json` might/must also be updated. If new updates are possible in the mobile save, `updates.available` should also be updated. This last file can be updated fully by means of a script.
 
 Don't expect me to change all these files stoically. If you want to convert your save, which you probably want for you are reading this, changing these files a little is but a simple action in respect to setting this all up. (as long as you have read the relevant pieces of information on this page, you probably get the idea). So feel free to make a pull request with new changes. I will however make sure that it works at the current version once this all is released...
+
+## Licencing
+
+Most of the code is licenced under MIT
+The only exceptions are:
+WTFPL is for the tarts library (static_assets/tarts.js) See http://www.wtfpl.net/ for more details.
+static_assets/buildings.csv and static_assets/tables.json are both based on the works of https://cookieclicker.fandom.com/wiki/Save (The CookieClicker Wikia) and those contributions are under the creative commons licence: https://creativecommons.org/licenses/by-nc/3.0/legalcode
