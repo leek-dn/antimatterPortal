@@ -27,6 +27,21 @@ Please note that this wikia is incomplete for the current version, but the infor
 
 The android save is completely different encoded. This is simply a JSON file. The JSON file is stored in a file called `/data/data/{APPID}/files/CookieClickerSave.txt` where **{APPID}** is for the official cookieClicker apk `org.dashnet.cookieclicker`. However without root access this file cannot be opened by any app on your phone but (that version of)CookieClicker. Even though root access to your phone seemed quite logical to me, other people (and android phone vendors) think otherwise. There is however another way to access that file. This is the backup system. By means of the ADB program (android debug bridge) (refer to https://www.xda-developers.com/install-adb-windows-macos-linux/ if you want to download the program). One can make a backup of an app or its data. This option is actually depricated, but still functional. So by entering `adb backup org.dashnet.cookieclicker -f backup.adb` a backup of the official cookieclicker app is made to the file `backup.adb`. `adb restore backup.adb` will restore that backup to the device. Now the backup format is actually a header of 24 characters, then zlib compression of the rest of the data. Having decompressed the rest results in a `.tar` file, a Tape ARchive. This is just a file format to describe multiple files within one file. So basically anyone knows .zip and .zip is compressing (using less data to still describe the same data) and combining files. The .adb file is conceptually the same, but now it has a header and uses different techiniques (tar for combining and zlib for compressing). Now there is one more thing to know to grasp this format and that is that the order of the files in the tar/adb file matters! If the order is not correct, files will not be restored and nothing (seems to) happens. So it is very important to remain the order.
 
+#### CookieClicker Trix
+
+CookieClicker trix has also sugar lumps added. This results in the following added save atributes:
+* `lumpT` - time in posix miliseconds
+* `lumps` - # of sugar lumps
+* `lumpsTotal` - total # ever recieved/dropped
+
+### Linux fast display backup
+By the following command, the by adb connected android device will send the backup, and the backup will be printed visually spaced. (The backup is actually hard to display nicely)
+```bash
+adb backup org.dashnet.cookieclicker -f /dev/stdout|sed -n '1,2!p'|dd if=/dev/stdin bs=24 skip=1 iflag=fullblock status=none | zlib-flate -uncompress | tar -xf -  --to-stdout apps/org.dashnet.cookieclicker/f/CookieClickerSave.txt|jq .
+```
+As you see, the `sed`, `adb`, `dd`, `zlib-flate` (which belongs to `qpdf`), and `jq` commands must be installed to the system.
+Change the APPID accordingly.
+
 ### Android header
 ```
 ANDROID BACKUP
@@ -36,7 +51,7 @@ none
 ```
 
 It ends with a newline and the newlines are linefeed.
-Older backup might work different and have a different header, but this seems to work.
+Older backup might work different and have a different header, but this seems to work on most of the recent Android versions.
 
 ### Alpha save
 
@@ -106,7 +121,7 @@ The buildings.csv file is generated from the Wikia and is a table that resembles
 ## updates of Cookie Clicker
 
 If Orteil updates one of both versions, this program needs an update as well.
-* If Orteil updates web version, probably hardly anything will be needed to update, for new settings will always follow old settings and most settings are in web cc and less are in android. (Unless this was about assigning wrinklers a specific amount of cookies eaten...) `tables.json` and `buildings.csv` might be updated to reflect the changes. The latter should hardly, if ever be updated, because there are hardly reasons to give buildings more properties. The best is to change the Wikia `Save` page and load the changes back using the R script. However I do not have a Wikia account.
-* If Orteil updates android version, some things might be convertable that weren't before. Then one need to change `conversion.csv`. If the setting or save item is not 1 on 1 convertable one needs to edit `verwerkSave` function in the HTML file as well. Also the new setting(s) can result in a new clean save being made. So `relative_cleansave.json` might/must also be updated. If new updates are possible in the mobile save, `updates.available` should also be updated. This last file can be updated fully by means of a script.
+* If Orteil updates **web version**, probably hardly anything will be needed to update, for new settings will always follow old settings and most settings are in web cc and less are in android. (Unless this was about assigning wrinklers a specific amount of cookies eaten...) `tables.json` and `buildings.csv` might be updated to reflect the changes. The latter should hardly, if ever be updated, because there are hardly reasons to give buildings more properties. The best is to change the Wikia `Save` page and load the changes back using the R script. However I do not have a Wikia account.
+* If Orteil updates **android version**, some things might be convertable that weren't before. Then one need to change `conversion.csv`. If the setting or save item is not 1 on 1 convertable one needs to edit `verwerkSave` function in the HTML file as well. Also the new setting(s) can result in a new clean save being made. So `relative_cleansave.json` might/must also be updated. If new updates are possible in the mobile save, `updates.available` should also be updated. This last file can be updated fully by means of a script.
 
 Don't expect me to change all these files stoically. If you want to convert your save, which you probably want for you are reading this, changing these files a little is but a simple action in respect to setting this all up. (as long as you have read the relevant pieces of information on this page, you probably get the idea). So feel free to make a pull request with new changes. I will however make sure that it works at the current version once this all is released...
