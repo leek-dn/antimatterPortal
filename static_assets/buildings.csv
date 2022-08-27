@@ -1,0 +1,7 @@
+"parameter$name","value$example","description"
+"amount$owned","600","Amount of this building currently owned"
+"amount$bought","950","Amount of this building bought this ascension, including those that have been sold (ex. if you bought 10, sold 10, and bought 10 again, this value would be 20)"
+"cookies$produced","4.593698631478832e+40","Cookies produced from this building this ascension"
+"level","1","Level of this building"
+"minigame$data","to do",NA
+"muted","0","Is this building muted? (0: no, 1: yes)"

@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>CookieClicker Save Loader</title>
+		<script src="https://cjrtnc.leaningtech.com/2.3/loader.js"></script><!-- loader of Java cheerp -->
+		<script src="https://cdn.jsdelivr.net/npm/d3@7"></script><!-- csv parsing -->
+		<script src="/FileSaver.js"></script><!-- file saving for downloading the generated backup -->
+	</head>
+	<style>
+		html, body {
+			height: 100%;
+		}
+
+		body {
+			-webkit-animation: bgcolor 20s infinite;
+			animation: bgcolor 10s infinite;
+			-webkit-animation-direction: alternate;
+			animation-direction: alternate;
+		}	
+
+		@keyframes bgcolor {
+			0%  {background-color: #45a3e5 }
+			30% {background-color: #66bf39 }
+			60% {background-color: #eb670f}
+			90% {background-color: #f35}
+			100%{background-color: #864cbf}
+		}
+
+		@keyframes bgcolornext {
+			0%  {background-color: #864cbf}
+			30% {background-color: #45a3e5}
+			60% {background-color: #66bf39}
+			90% {background-color: #eb670f}
+			100%{background-color: #f35}
+		}
+
+		#pastefield:focus {
+			top: -15%;
+			position: absolute;
+		}
+		
+		#pastefield {
+			border: none;
+			top: 70%;
+			position: absolute;
+			left: 30%;
+			width: 40%;
+			height: 10%;
+			font-size: 35px;
+			display: none;
+			
+			-webkit-animation: bgcolornext 20s infinite;
+			animation: bgcolornext 10s infinite;
+			-webkit-animation-direction: alternate;
+			animation-direction: alternate;
+		}
+		
+		::placeholder {
+			color: black;
+			opacity: 1;
+		}
+		
+		@keyframes buttoncolor {
+			0% {background-color: #864cbf}
+			30% {background-color: #f35}
+			60% {background-color: #eb670f}
+			90% {background-color: #66bf39}
+			100% {background-color: #45a3e5}
+		}
+		#button {
+			-webkit-animation: buttoncolor 20s infinite;
+			animation: buttoncolor 10s infinite;
+			-webkit-animation-direction: alternate;
+			animation-direction: alternate;
+			border: none;
+		}
+		#loader {
+			border: 16px solid #f3f3f3; /* Light grey */
+			border-top: 16px solid blue;
+			border-right: 16px solid green;
+			border-bottom: 16px solid red;
+			border-radius: 50%;
+			width: 200px;
+			height: 200px;
+			animation: spin 2s linear infinite;
+			top: calc(50% - 116px);
+			left: calc(50% - 116px);
+			position: absolute;
+			z-index: 100;
+		}
+
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+	</style>
+	<body ondrop="dropHandler(event);" ondragover="dragOverHandler(event)" oncontextmenu = '
+		disp = document.getElementById("idChoice");
+		alphadisp = document.getElementById("alphaHolder");
+		if (disp.style.display == "block") {
+			disp.style.display = "none";
+			alphadisp.style.display = "none";
+		} else {
+			disp.style.display = "block";
+			alphadisp.style.display = "block";
+		}
+		return false;' >
+		<div id="loader"></div>
+		<h1 id="header" style="font-size: 300%;position: absolute;top: 10px;left: 50px;  -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;">
+			Loading this application takes time...
+		</h1>
+		<input type="file" onchange="bestandwordingelezen(this)" style = "display: none;">
+		<div id = "console" style="display: none" textContent=""></div>
+		<input type="button" id="button" value="60" disabled=true style = "width: 80%;bottom: 10%;position: absolute;height: 70%;font-size: 1000%;left: 10%;top: 15%;" />
+		<input type="text" id="pastefield" autofocus onpaste="plakken(this)" onfocusout="plakFocusKwijt(this)" placeholder="Click here first if you want to paste your save..." />
+		<div style="bottom:0%;left:40%;position: absolute;display: none;" id = "idChoice">
+			<input onclick="lockSpecialIDfield(this)" checked type="radio" id="vccm" name="whatid" value="60">
+			<label onclick="lockSpecialIDfield(this)" for="vccm">Vanilla Cookie Clicker Mobile</label><br>  
+			<input onclick="lockSpecialIDfield(this)" type="radio" id="cct" name="whatid" value="60">
+			<label onclick="lockSpecialIDfield(this)" for="cct">Cookie Clicker Trix</label><br>  
+			<input type="radio" onclick="unlockSpecialIDfield(this)" id="other" name="whatid" value="100">
+			<label for="other" onclick="unlockSpecialIDfield(this)">Other: <input id="specialid" type="text" disabled=true placeholder="org.dashnet.idk"/></label><br><br>
+		</div>
+		<div style="bottom:0%;left:60%;position: absolute;display: none;" id="alphaHolder">
+			<input type="checkbox" id="alphaCheck" name="alpha" value="60"><label for="alphaCheck">Use alpha version of the game</label>
+		</div>
+	</body>
+	<script>
+	
+		var notLoadedYet = true;
+		var backupIsAvailable = false; // this boolean is present to check the availability of a backup on which we load our save
+		var tarIsUncompressed = false;
+		var backupIsExtracted = false;
+		var backupIsFromInternal = true;
+		var backupIsChecked = false; // this is only needed for the tar function
+		var debug = false;
+		var readyForUpload = debug; // on default false
+		var backupAsTar;
+		var alphaAsTar;
+		var backupData;
+		var userMessages = [];
+
+		// variables needed for the actual conversion
+		var orig_full_save;
+		var ccsave;
+		var buildingTable;
+		var buildingNames;
+		var save_tables = {};
+		var conversions;
+		var upgradeIdsAvailable;
+
+		var n;
+		var fileList;
+		
+		// HTML elements
+		var consoleElement = document.getElementById('console');
+		var messageButton  = document.getElementById('button');
+		var headerElement  = document.getElementById('header');
+		var loaderElement  = document.getElementById('loader');
+		var textInputElement=document.getElementById('pastefield');
+		var alpha          = document.getElementById('alphaCheck');
+		// functions that call Java code
+		function tarExtract(source, destination, yes = function() {}, no = function() {}) {
+			return cjCall("org.nick.abe.AndroidTar", "extractTar", source, destination, ".filelist").then(yes, no);
+		}
+		
+		function tarCompress(destination, source, yes = function() {}, no = function() {}) {
+			return cjCall("org.nick.abe.AndroidTar", "createTar", destination, source, "/files/.filelist").then(yes, no);
+		}
+		
+		function unpack(source, destination, password = "", yes = function() {}, no = function() {}) {
+			return cjCall("org.nick.abe.AndroidBackup", "extractAsTar", source, destination, password).then(yes, no);
+		}
+		
+		function pack(source, destination, password = "", yes = function() {}, no = function() {}) {
+			return cjCall("org.nick.abe.AndroidBackup", "packTar", source, destination, password, true).then(yes, no);
+		}
+		
+		// function to call when one should/can upload
+		function staOpenVoorUpload() {
+			messageButton.disabled = false;
+			readyForUpload = true;
+			loaderElement.style.display = "none";
+			textInputElement.style.display = "block";
+		}
+		
+		function getId() {
+			vanilla = document.getElementById("vccm").checked
+			trix = document.getElementById("vccm").checked
+			other = document.getElementById("vccm").checked
+			if (vanilla) return "org.dashnet.cookieclicker"
+			if (trix) return "org.dashnet.cookieclickertrix"
+			if (other) return document.getElementById("specialid").value
+		}
+		
+		// to call after the upload/submission of save is started
+		function gaWeerLaden() {
+			messageButton.disabled = true;
+			messageButton.value = "";
+			readyForUpload = false;
+			loaderElement.style.display = "block";
+			headerElement.textContent = "Processing"
+			textInputElement.style.display = "none";
+			textInputElement.value = "";
+			messageLoop();
+		}
+		// ends the loading
+		function eindigLaden() {
+			messageButton.style.display = "none";
+			loaderElement.style.display = "none";
+			clearInterval(aftellen);
+		}
+		
+		function unlockSpecialIDfield(a) {
+			document.getElementById('specialid').disabled = false;
+		}
+		
+		function lockSpecialIDfield(a) {
+			document.getElementById('specialid').disabled = true;
+			document.getElementById('specialid').value = "";
+		}
+		
+		// this function is called when is pasted
+		function plakken(a) {
+			if (readyForUpload) {
+				// somehow this can happen, but the next time it works
+				if (a.value=="") headerElement.textContent = "Please paste again/do again what you did...";
+				else {
+					if (a.value.trim().endsWith("%21")) {
+						headerElement.textContent = "Parsing the save";
+						simpleSaveProcess(a.value);
+					} else {
+						headerElement.textContent = "The save format is incorrect. Have you actually copied the save?";
+					}
+				}
+			}
+		}
+		// lost focus on the paste text element
+		function plakFocusKwijt(a) {
+			setTimeout(function() {document.getElementById("pastefield").select()}, 200);
+			a.value = "";
+		}
+
+		// potential functional method
+		function deleteAllFilesFromCheerp(callBack) {
+			// this is a radical method and might require reloading of page
+			window.indexedDB.deleteDatabase("cjFS_/files/")
+		}
+
+		// check if the file is present in the virtual filesystem 'files'
+		// of cheerpJ (java on web)
+		// if it does, executes yes, if not executes no(filename/error, undefined/-1)
+		function checkIfFileIsPresent(filename, yes, no) {
+			// weer gaan laden
+			var openResult = indexedDB.open("cjFS_/files/");
+			openResult.onsuccess = function(e) {
+				var tx = this.result.transaction("files", "readonly");
+				// Retrieve the first unallocated inode
+				var store = tx.objectStore("files");
+				var ga = store.get(filename);
+				ga.onsuccess = function(v) {
+					m = v.target.result
+					if(m==undefined) {
+						no(filename, -1)
+					} else {
+						yes(0)
+					}
+					return;
+				}
+				ga.onerror = function(e) {
+					no(e)
+				}
+			}
+			openResult.onerror = function(e) {
+				no(e)
+			}
+		}
+		// check if the file is present in the virtual filesystem 'files'
+		// of cheerpJ (java on web)
+		// if it does, executes yes with file contents, if not executes no(filename/error, undefined/-1)
+		function fileContents(filename, yes = function(x) {console.log(x)}, no) {
+			// weer gaan laden
+			var openResult = indexedDB.open("cjFS_/files/");
+			openResult.onsuccess = function(e) {
+				var tx = this.result.transaction("files", "readonly");
+				// Retrieve the first unallocated inode
+				var store = tx.objectStore("files");
+				var ga = store.get(filename);
+				ga.onsuccess = function(v) {
+					m = v.target.result
+					if(m==undefined) {
+						no(filename, -1)
+					} else {
+						yes(m.contents);
+					}
+					return;
+				}
+				ga.onerror = function(e) {
+					no(e)
+				}
+			}
+			openResult.onerror = function(e) {
+				no(e)
+			}
+		}
+		function listAll() {
+			// weer gaan laden
+			var openResult = indexedDB.open("cjFS_/files/");
+			openResult.onsuccess = function(e) {
+				var tx = this.result.transaction("files", "readwrite");
+				// Retrieve the first unallocated inode
+				var store = tx.objectStore("files");
+				var ga = store.getAllKeys()
+				ga.onsuccess = function(v) {
+					n = v.target.result
+					for (i = 0;i < n.length;i++) {
+						console.log(n[i])
+					}
+				}
+			}
+		}
+		// check if the file is present in the virtual filesystem 'files'
+		// of cheerpJ (java on web)
+		// if it does, executes yes with file contents, if not executes no(filename/error, undefined/-1)
+		function dirMoveOperation(source, target, yes, no) {
+			// weer gaan laden
+			var openResult = indexedDB.open("cjFS_/files/");
+			openResult.onsuccess = function(e) {
+				var tx = this.result.transaction("files", "readwrite");
+				// Retrieve the first unallocated inode
+				var store = tx.objectStore("files");
+				var ga = store.getAllKeys()
+				ga.onsuccess = function(v) {
+					n = v.target.result
+					var g = store.getAll();
+					g.onsuccess = function(w) {
+						console.log(w)
+						m = w.target.result
+						console.log(i)
+						for (i = 0;i < n.length;i++) {
+							if (n[i].startsWith(source)) {
+								console.log(n[i])
+								store.put(m[i], n[i].replace(source, target)).onsuccess = function(vw) {
+									console.log(vw.target)
+									store.delete(vw.target.result.replace(target, source));
+								}
+							}
+						}
+					}
+					if(n==undefined) {
+						no(-1)
+					} else {
+						yes();
+					}
+					return;
+				}
+				ga.onerror = function(e) {
+					no(e)
+				}
+			}
+			openResult.onerror = function(e) {
+				no(e)
+			}
+		}
+		// store file in virtual filesystem
+		// of cheerpJ (java on web)
+		// if it does, executes yes, if not executes no(error)
+		// this function does not work if you just put down the
+		// data, the data object also has to have a permType, type (file/dir), inodeId and the content is contents
+		function storeToFile(filename, data, yes, no) {
+			// weer gaan laden
+			var openResult = indexedDB.open("cjFS_/files/");
+			openResult.onsuccess = function(e) {
+				var tx = this.result.transaction("files", "readwrite");
+				// Retrieve the first unallocated inode
+				var store = tx.objectStore("files");
+				var ga = store.put(data, filename);
+				ga.onsuccess = function(v) {
+					m = v.target.result
+					yes(0);
+					return;
+				}
+				ga.onerror = function(e) {
+					no(e)
+				}
+			}
+			openResult.onerror = function(e) {
+				no(e)
+			}
+		}
+		
+
+		// check if the file is present in the virtual filesystem 'files'
+		// of cheerpJ (java on web)
+		// if it does, executes yes with file contents, if not executes no(filename/error, undefined/-1)
+		function modifyFileByReplacing(filename, source, target, yes, no) {
+			// weer gaan laden
+			var openResult = indexedDB.open("cjFS_/files/");
+			openResult.onsuccess = function(e) {
+				var tx = this.result.transaction("files", "readwrite");
+				// Retrieve the first unallocated inode
+				var store = tx.objectStore("files");
+				var ga1 = store.get(filename);
+				ga1.onsuccess = function(v) {
+					m = v.target.result
+					if(m==undefined) {
+						no(filename, -1)
+					} else {
+						console.log(m)
+						console.log(new TextDecoder().decode(m.contents))
+						m.contents = Uint8Array.from(
+							new TextDecoder().decode(m.contents).replaceAll(source, target)
+							.split("").map(x => x.charCodeAt()))
+						
+						var ga2 = store.put(m, filename);
+						ga2.onsuccess = function(v) {
+							m = v.target.result
+							yes(0);
+							return;
+						}
+						ga2.onerror = function(e) {
+							no(e)
+						}
+						yes(m.contents);
+						
+					}
+					return;
+				}
+				ga1.onerror = function(e) {
+					no(e)
+				}
+			}
+			openResult.onerror = function(e) {
+				no(e)
+			}
+		}
+		// this only works on already exsisting files
+		function modifyFileByOverWriting(filename, data, yes, no) {
+			// weer gaan laden
+			var openResult = indexedDB.open("cjFS_/files/");
+			openResult.onsuccess = function(e) {
+				var tx = this.result.transaction("files", "readwrite");
+				// Retrieve the first unallocated inode
+				var store = tx.objectStore("files");
+				var ga1 = store.get(filename);
+				ga1.onsuccess = function(v) {
+					m = v.target.result
+					if(m==undefined) {
+						no(filename, -1)
+					} else {
+						m.contents = data
+						var ga2 = store.put(m, filename);
+						ga2.onsuccess = function(v) {
+							m = v.target.result
+							yes(0);
+							return;
+						}
+						ga2.onerror = function(e) {
+							no(e)
+						}
+						yes(m.contents);
+						
+					}
+					return;
+				}
+				ga1.onerror = function(e) {
+					no(e)
+				}
+			}
+			openResult.onerror = function(e) {
+				no(e)
+			}
+		}
+
+		// this function is called on reading the file
+		function bestandwordingelezen(input) {
+			// neem het eerste bestand
+			let file = input.files[0];
+			verwerkBestand(file);
+		}
+	if (!debug) {
+		// cheerpjInit({disableErrorReporting:true}, {disableLoadTimeReporting:true});
+		cheerpjInit({disableErrorReporting:true}, {disableLoadTimeReporting:true});
+		cheerpjRunJar("./cheerp/abe.jar");
+	}
+
+		// this function is called when the script founds the tar file extracted
+		function registreerIsUitgepakt(e) {
+			eindigLaden();
+			backupIsExtracted = true;
+			messageButton.style.display = "block";
+			headerElement.textContent = "Now is the time to 'upload' the save file from your web version of cookieClicker";
+			messageButton.value = "You can drag the file on this window,\nclick this button to start uploading,\nor just paste with the shortcut of your computer";
+			messageButton.style.fontSize = "200%";
+			staOpenVoorUpload();
+		}
+		
+		// this function is called when the script founds the .tar file
+		function registreerTarAanwezigheid(e) {
+			eindigLaden();
+			tarIsUncompressed = true;
+			messageButton.style.display = "block";
+			messageButton.value = "Checking whether things are extracted...";
+			messageButton.style.fontSize = "200%"
+			checkIfFileIsPresent("/.filelist", registreerIsUitgepakt, tochNiet);
+		}
+		
+		// this function is called when the script founds the backup
+		function registreerBackupAanwezigheid(e) {
+			eindigLaden();
+			backupIsAvailable = true;
+			backupIsChecked = true;
+			checkIfFileIsPresent("/hello.tar", registreerTarAanwezigheid, tochNiet);
+		}
+
+		// this function is called when a file is not found
+		// based on the filename some action is taken
+		function tochNiet(name, e) {
+			if (e==-1) {
+				console.log(name)
+				console.log(e)
+				switch (name) {
+				case "/hello.adb":case "/strings/hello.adb":case "/files/hello.adb":
+					messageButton.style.display = "block";
+					messageButton.value = "This application only works if you first upload a\nlegitimate backup of your cookieclocker on mobile\nAndroid. " +
+						"It is okay if that backup hardly contains any,\nbut is used to patch the real save.";
+					messageButton.style.fontSize = "200%"
+					backupIsChecked = true;
+					staOpenVoorUpload();
+					break;
+				case "/hello.tar":case "/files/hello.tar":
+					// if the backup is not yet checked, maybe the backup only should be loaded.
+					// is the backup is already checked, we assume that we can decompress to tar.
+					if (!backupIsChecked) {
+						checkIfFileIsPresent("/hello.adb", registreerBackupAanwezigheid, tochNiet);
+					} else {
+						messageButton.style.display = "block";
+						messageButton.value = "Decompressing...";
+						if (backupIsFromInternal) {
+							// actually this should always first extract and only if it gives error ask for password
+							unpack("/str/hello.adb", "/files/hello.tar", "", registreerTarAanwezigheid, tochNiet);
+						} else {
+							unpack("/str/hello.adb", "/files/hello.tar", prompt("Give password please...\nempty for no password", "Secret"), registreerTarAanwezigheid, tochNiet);
+						}
+					}
+					break;
+				case "/.filelist":case "/files/.filelist":
+					messageButton.style.display = "block";
+					messageButton.value = "Extracting...";
+					tarExtract("/files/hello.tar", "/files/", registreerIsUitgepakt, tochNiet);
+					break;
+				default:
+					text = "No value found";
+				} 
+			} else {
+				messageButton.style.display = "block";
+				messageButton.value = "Er is een error: " + e;
+				console.log(e);
+			}
+		}
+
+		// the upload event
+		messageButton.onclick = function() {
+			// simulate click on the upload file input
+			if (readyForUpload) {
+				document.getElementsByTagName("input")[0].click()
+			}
+		}
+
+		// the click on the header makes the console text of java toggle visibility
+		headerElement.onclick = function() {
+			consoleElement.style.display = consoleElement.style.display=="block"?"none":"block";
+		}
+		// returns the names but then spaces replaced to dollar signs
+		function cleanNames(names) {
+			return names.map(function (name) {
+				return name.toLowerCase().replaceAll(/ |-/g, "$")
+			})
+		}
+		// this function makes sure that new messages are added, but sequentially
+		// so that a smooth effect is reached
+		function messageLoop() {
+			setInterval(function() {
+				if (userMessages.length>0) {
+					buttonMessage(userMessages[0]);
+					userMessages = userMessages.slice(1)
+				}
+			}, 600)
+		}
+		// this function is called on a new message by messageLoop
+		function buttonMessage(message) {
+			messageButton.style.display = "block";
+			messageButton.value += "\n" + message;
+			mbt = messageButton.value.split("\n")
+			if (mbt.length > 7) {
+				messageButton.value = mbt.slice(mbt.length-7).join("\n")
+			}
+			console.log(message)
+		}
+		// laad een op categorie gespitte save in en retourneert de save voor cc mobile
+		function verwerkSave(save) {
+			// now the different save lines are stored to orig_full_save
+			version = save[0]
+			orig_full_save = {"game$version":save[0], "empty":save[1], "run$details":save[2], "preferences":save[3],
+							"miscellaneous$game$data":save[4], "building$data":save[5], "upgrades":save[6],
+							"achievements":save[7], "game$buffs":save[8]}
+			if (save.length>=10) orig_full_save.mod$data = save[9]
+			// console.log(orig_full_save)
+			// plugins_decoded = parse_json(paste0("{", gsub("\\};", "}", gsub('(\\w+[^"]):\\{', '"\\1":\\{', orig_full_save["mod.data"].replaceAll(/(;\w+[^"]):\\{/, ',"\\1":\\{'))), "}"))
+			
+			// this function converts certain properties in the save file to them in the mobile file by the use of a conversion table
+			// some categories in the web save can very easily follow this method. It is important to note that
+			// this also applies for each building, but that is done somewhat lower on an almost identical way (one loop more)
+			// the save values are always mapped to the names of the table in wikia and then mapped to the CC mobile names
+			function easy_conv(name, split = ";") {
+				// wat als de save file niet overeenkomt met het formaat op wikia
+				if (save_tables[name].length!=orig_full_save[name].split(split)) {
+					userMessages.push("'" + name.replaceAll(/\.|\$/g, " ") + "' does contain a different # of records than the save file...")
+				}
+				if (save_tables[name].columns!=undefined) {
+					values = orig_full_save[name].split(split).slice(0, save_tables[name].length)
+					names = []
+					for (i = 0;i < save_tables[name].length;i++) {
+						names.push(save_tables[name][i].parameter$name)
+					}
+					save_tables[name] = {}
+					for (i = 0;i < names.length;i++) {
+						save_tables[name][names[i]] = values[i]
+					}
+				}
+				conversions_selection = conversions.filter(function(x) {return x.web.startsWith(name)})
+				amount = 0;
+				for (i = 0;i < conversions_selection.length;i++) {
+					x = conversions_selection[i]
+					if (x.mobile!="") {
+						amount++;
+						the_code = "ccsave." + x.mobile + " = save_tables." + x.web;
+						if (x.type=="num") {
+							the_code = the_code.replace(/(= )(.*)$/, "$1 Number($2)");
+							the_code = the_code + "\nsave_tables." + x.web + " = Number(save_tables." + x.web + ")";
+						}
+						// zet het daadwerkelijk om
+						eval(the_code)
+					} else {
+						if (x.type=="num") {
+							the_code = "save_tables." + x.web + " = Number(save_tables." + x.web + ")";
+							eval(the_code);
+						}
+					}
+				}
+				// userMessages.push("Converted about " + amount.toString() + " items");
+				return conversions_selection.length;
+			}
+			easy_conv("run$details")
+			easy_conv("miscellaneous$game$data")
+			easy_conv("preferences", "")
+			// wrinklers
+			normalWrinklers = save_tables.miscellaneous$game$data.number$of$wrinklers-save_tables.miscellaneous$game$data.number$of$shiny$wrinklers
+			if (save_tables.miscellaneous$game$data.number$of$shiny$wrinklers>0) {
+				for (x = 0;x < save_tables.miscellaneous$game$data.number$of$shiny$wrinklers;x++) {
+					ccsave.wrinklers[x].t = 1;
+					ccsave.wrinklers[x].s = save_tables.miscellaneous$game$data.cookies$in$shiny$wrinklers/save_tables.miscellaneous$game$data.number$of$shiny$wrinklers;
+				}
+			}
+			for (x = save_tables.miscellaneous$game$data.number$of$shiny$wrinklers+1;x < save_tables.miscellaneous$game$data.number$of$wrinklers;x++) {
+				ccsave.wrinklers[x].t = 0;
+				ccsave.wrinklers[x].s = save_tables.miscellaneous$game$data.cookies$sucked$by$wrinklers/normalWrinklers;
+			}
+			pum = false
+			um = "("
+			for (x = 0; x < ccsave.permanentUpgrades.length;x++) {
+				if (ccsave.permanentUpgrades[x]!=-1) {
+					if (-1!=upgradeIdsAvailable.indexOf(ccsave.permanentUpgrades[x])) {
+						// prima upgrade
+					} else {
+						if (!pum) {
+							userMessages.push("A by you selected permanent upgrade is not (yet) available in CC mobile. We prevented this.");
+							userMessages.push("If we didn't, your save will work, but ascending will end up in an error (until orteil fix this)");
+							pum = true
+						}
+						um += ccsave.permanentUpgrades[x] + ", ";
+						ccsave.permanentUpgrades[x] = -1;
+					}
+				}
+			}
+			// now not every id has its own line
+			if (pum) {
+				um  = um.replace(/, $/, "");
+				um += ")";
+				userMessages.push(um);
+			}
+			// researchTime
+			// convert  building data
+			// make first character uppercase
+			function upFirst(string) {
+				return string.charAt(0).toUpperCase() + string.slice(1);
+			}
+			// converts the name to how the name is used in CC mobile
+			function naamAlsInMobileCC (name) {
+				return upFirst(name.replace("$", " ").replace(/ies$/, "y").replace(/s$/, ""))
+			}
+			// this function is to replace .$. by the right building name (as stored in subgroup)
+			function vervangSG(sg, text) {
+				return text.replace(/(^|\.)\$\./, sg);
+			}
+
+			cleanNames(Object.keys(ccsave.buildings).map(function(x){return (x+"s").replace(/ys$/, "ies")})).map(function(subgroup) {
+				if (Array.isArray(save_tables.building$data[subgroup])) {
+					values = orig_full_save.building$data.split(";")[Object.keys(save_tables.building$data).indexOf(subgroup)].split(",").slice(0, save_tables.building$data[subgroup].length)
+					names = []
+					for (i = 0;i < save_tables.building$data[subgroup].length;i++) {
+						names.push(save_tables.building$data[subgroup][i].parameter$name);
+					}
+					save_tables.building$data[subgroup] = {}
+					for (i = 0;i < names.length;i++) {
+						save_tables.building$data[subgroup][names[i]] = values[i];
+					}
+				}
+
+				conversions_selection = conversions.filter(function(x) {return x.web.startsWith("building$data")});
+				amount = 0;
+				for (i = 0;i < conversions_selection.length;i++) {
+					x = conversions_selection[i];
+					code_for_to_int = "save_tables." + vervangSG("." + subgroup + ".", x.web) + " = Number(save_tables." + vervangSG("." + subgroup + ".", x.web) + ")";
+					if (x.mobile!="") {
+						the_code = "ccsave." + vervangSG("['" + naamAlsInMobileCC(subgroup) + "'].", x.mobile) + " = save_tables." + vervangSG("$1" + subgroup + ".", x.web);
+						if (x.type=="num") {
+							the_code = the_code.replace(/(= )(.*)$/, "$1 Number($2)");
+							the_code += "\n" + code_for_to_int;
+						}
+						eval(the_code)
+						amount++;
+					} else {
+						if (x.type=="num") {
+							the_code = code_for_to_int;
+							eval(the_code);
+						}
+					}
+				}
+				// console.log("Converted about " + amount + " items")
+			})
+			
+			upgrades_as_list = orig_full_save['upgrades'].split("").map(x => {return x-"0"})
+			for (var i = 0;i < ccsave.upgrades.length/2;i++) {
+				ccsave.upgrades[i] = upgrades_as_list[i*2]*2 + upgrades_as_list[(i*2)+1];
+			}
+			ccsave.researchTM = 1000 * 60 * 30 / ((ccsave.upgrades[141]%2==1)? 10 : 1);
+			if (ccsave.researchUpgrade==0) ccsave.researchUpgrade = -1;
+			achievements_as_list = orig_full_save['achievements'].split("").map(x => {return x-"0"});
+			ccsave.achievs.undefined = achievements_as_list[0];
+			for (var i = 1;i < ccsave.achievs.length/2;i++) {
+				ccsave.achievs[i] = achievements_as_list;
+			}
+			// the path will change later possibly
+			modifyFileByOverWriting("/apps/org.dashnet.cookieclicker/f/CookieClickerSave" + (alpha.checked?"Test":"") + ".txt", JSON.stringify(ccsave), function(w) {
+				console.log("iets")
+				// if alpha version is requested...
+				if (alpha.checked) {
+					aToBFile("/000005.ldb", function(x1) {
+						aToBFile("/000016.ldb", function(x2) {
+							aToBFile("/000018.log", function(x3) {
+								aToBFile("/000019.ldb", function(x4) {
+									aToBFile("/000021.log", function(x5) {
+										aToBFile("/000022.ldb", function(x6) {
+											aToBFile("/CURRENT", function(x7) {
+												aToBFile("/LOCK", function(x8) {
+													aToBFile("/LOG", function(x9) {
+														aToBFile("/LOG.old", function(x10) {
+															aToBFile("/MANIFEST-000001", function(x11) {
+																finalizeBackupForDownloadButFirstAppId()
+															})
+														})
+													})
+												})
+											})
+										})
+									})
+								})
+							})
+						})
+					})
+				} else {
+					finalizeBackupForDownloadButFirstAppId()
+				}
+			}, function(w) {
+				userMessages.push("Could not store the created save to a file...");
+				userMessages.push("You should not see this error...");
+				eindigLaden();
+			});
+		}
+		// copy contents of actualname to localstorage leveldb/actualname
+		function aToBFile(actualName, positiveCallBack) {
+			fileContents(actualName, function(x1) {
+				modifyFileByOverWriting("/apps/org.dashnet.cookieclicker/r/app_webview/Default/Local Storage/leveldb" + actualName, x1, function(y1) {
+					positiveCallBack(y1);
+				}, function(y1) {
+					console.log("Error: this shouldn't be happening..." + actualName)
+				})
+			}, function(x1) {
+				console.log("Error: this shouldn't be happening..." + actualName)
+			})
+		}
+		
+		// this function turns the backup files in virtual filesystem of Cheerp
+		// into a downloadable file that is presented to the user, or an error
+		// but first makes the id of the app/backup right of applicable
+		function finalizeBackupForDownloadButFirstAppId() {
+			if (getId()=="org.dashnet.cookieclicker") {
+				finalizeBackupForDownload();
+			} else {
+				deAppId = getId();
+				// rename into files
+				modifyFileByReplacing("/apps/org.dashnet.cookieclicker/_manifest", "org.dashnet.cookieclicker", deAppId, function(x){
+					// rename .filelist
+					modifyFileByReplacing("/.filelist", "org.dashnet.cookieclicker", deAppId, function(x){
+						// rename all files
+						dirMoveOperation("/apps/f/org.dashnet.cookieclicker", "/apps/f/" + deAppId, function(x) {
+							console.log(x)
+							finalizeBackupForDownload()
+						}, function(x){
+							console.log("error moving files")
+							console.log("(this shouldn't happen)")
+						})
+					}, function(y) {
+						console.log("error renaming filelist");
+						console.log(x)
+					});
+				}, function(y) {
+					console.log("error modifiying manifest");
+					console.log(x)
+				});
+			}
+		}
+		
+		// this function turns the backup files in virtual filesystem of Cheerp
+		// into a downloadable file that is presented to the user, or an error
+		function finalizeBackupForDownload() {
+			tarCompress("/files/made2.tar", "/files", function(x) {
+				pack("/files/made2.tar", "/files/hello.adb", "", function(y) {
+					userMessages.push("Succesfully created!");
+					fileContents("/hello.adb", function(bytedata) {
+						headerElement.textContent = "Finished. Now use 'adb restore yourBackup.adb' and claim your process on mobile"
+						var blob = new Blob([bytedata], {type: "application/x-google-ab; charset=binary"});
+						saveAs(blob, "yourBackup.adb");
+						// deleteAllFilesFromCheerp(); // do this for now
+						eindigLaden();
+					}, function(z) {
+						userMessages.push("The file could not retrieve");
+						userMessages.push("You shouldn't be able to see this error message");
+						eindigLaden();
+					});
+				});
+			}, function(x) {
+				console.log("Something went wrong on compressing the tar");
+				userMessages.push("Something went wrong on compressing the tar");
+				userMessages.push("This shouldn't be happening");
+				console.log(x)
+				eindigLaden();
+				return;
+			});
+		}
+		
+		// decode the save to its textual splitted form and then call the verwerkSave function
+		// or tell the user an error has appeared and let him/her upload again
+		function simpleSaveProcess(save) {
+			// bestand is een save
+			console.log("Is save file");
+			gaWeerLaden();
+			save = save.trim();
+			// decode as URI (for the tail of the save)
+			save = decodeURIComponent(save);
+			if (save.endsWith("!END!")) {
+				// remove the special ending
+				save = save.replace(/!END!$/, "");
+				// base64 decode de file
+				save = atob(save);
+				// split on save categories
+				save = save.split("|");
+				verwerkSave(save);
+			} else {
+				console.log("Wrong save format");
+				headerElement.textContent = "The save format is incorrect. Have you actually copied the save?";
+				eindigLaden();
+				messageButton.style.display = "block";
+				staOpenVoorUpload();
+				return false;
+			}
+		}
+
+		// this function returns the type of the file as string
+		function typeOfFile(x) {
+			var y = new Uint8Array(x)
+			if (new TextDecoder().decode(y.slice(0, 15))=="ANDROID BACKUP\n") {
+				return "adb";
+			} else {
+				if (new TextDecoder().decode(y.slice(257, 257+5))=="ustar") {
+					return "tar";
+				} else {
+					if (new TextDecoder().decode(y.slice(x.length-30, x.length)).trim().endsWith("%21")) {
+						return "websave";
+					} else {
+						if (new TextDecoder().decode(y.slice(0, 1))=="{") {
+							return "androidsave";
+						} else {
+							return "unknown";
+						}
+					}
+				}
+			}
+		}
+			
+		// this function processes the file when it is uploaded
+		// it detects the filetype and then executes the right action
+		function verwerkBestand(bestand) {
+			console.log('... file.name = ' + bestand.name);
+			bestand.arrayBuffer().then(function(x) {
+				fileType = typeOfFile(x);
+				switch (fileType) {
+				case "adb":
+					// bestand is een adb file
+					console.log("Is een adb backup file");
+					backupData = new Uint8Array(x);
+					gaWeerLaden();
+					cheerpjAddStringFile("/str/hello.adb", backupData);
+					unpack("/str/hello.adb", "/files/hello.tar", "", registreerTarAanwezigheid, tochNiet);
+					break;
+				case "tar":
+					// bestand is een tar
+					console.log("Is een tar file");
+					gaWeerLaden();
+					cheerpjAddStringFile("/str/hello.tar", backupData);
+					tarExtract("/str/hello.tar", "/files", registreerTarAanwezigheid, tochNiet);
+					break;
+				case "websave":
+					// bestand is een websave
+					simpleSaveProcess(new TextDecoder().decode(new Uint8Array(x)));
+					break;
+				default:
+					console.log("File format not recognized");
+					messageButton.style.display = "block";
+					messageButton.value = "The file you provided contains an unknown file structure.";
+				}
+			}, function(e) {
+				console.log("Error reading the file...");
+			});
+		}
+
+		function dropHandler(ev) {
+			console.log('File(s) dropped');
+
+			// Prevent default behavior (Prevent file from being opened)
+			ev.preventDefault();
+
+			if (ev.dataTransfer.items) {
+				// Use DataTransferItemList interface to access the file(s)
+				if (ev.dataTransfer.items.length>2) {
+					console.log("This is probably something we want to stop.");
+					messageButton.value = "You uploaded more than 2 files at once.\nThis is probably not what you want.";
+					messageButton.style.fontSize = "200%";
+				} else {
+					verwerkBestand(ev.dataTransfer.items[0].getAsFile());
+					// TODO: should also look to the other file...
+				}
+			} else {
+				// Use DataTransfer interface to access the file(s)
+				iets = ev.dataTransfer.files;
+				
+				if (ev.dataTransfer.files.length>2) {
+					console.log("This is probably something we want to stop.");
+					messageButton.value = "You uploaded more than 2 files at once.\nThis is probably not what you want.";
+					messageButton.style.fontSize = "200%";
+				} else {
+					verwerkBestand(ev.dataTransfer.files[0]);
+					// TODO: should also look to the other file...
+				}
+				for (let i = 0; i < ev.dataTransfer.files.length; i++) {
+					console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
+				}
+			}
+		}
+		
+		// required function
+		function dragOverHandler(ev) {
+			// Prevent default behavior (Prevent file from being opened)
+			ev.preventDefault();
+		}
+		
+		function fileListCustom() {
+			console.log(fileList)
+			modifyFileByOverWriting("/.filelist", fileList, registreerIsUitgepakt, tochNiet)
+		}
+
+
+		// This observer is to check when cheerpj/the jar file are ready
+		// the moment we detect the jar wrote something about ABE_PASSWD
+		// on the console (last line of usage message)
+		// we assume that the jar is ready (which seemed to be)
+		// the console is actually a HTML element with
+		// id = console
+		Object.defineProperty(consoleElement, "textContent", {
+			// Don't override the getter, but stub it in.
+			get: function() {
+				return this.getAttribute("textContent");
+			},
+			// In the setter, we want to set the textContent
+			//  and also fire off the change event.
+			//  By doing this, the coder changing the
+			//  textContent never needs worry about it.
+			set: function(val) {
+				// handle textContent change here
+				this.setAttribute("textContent", val);
+				this.innerText = val;
+				// fire the event
+				var evt = document.createEvent("HTMLEvents");
+				evt.initEvent("change", false, true);
+				consoleElement.dispatchEvent(evt);
+				if (-1!=consoleElement.textContent.indexOf("ABE_PASSWD")) {
+					if (notLoadedYet) {
+						// jar is loaded
+						notLoadedYet = false;
+						if (messageButton.style.display == "none") {
+							eindigLaden();
+						}
+						// this has to happen here for then it is loaded
+						cheerpjAddStringFile("/str/hello.tar", backupAsTar);
+						cheerpjAddStringFile("/str/alpha.tar", alphaAsTar);
+						// the code has to extract the tarfile
+						setTimeout(function() {
+							tarExtract("/str/alpha.tar", "/files/", function(x) {
+								// moet in deze volgorde wegens .filelist
+								tarExtract("/str/hello.tar", "/files/", fileListCustom, tochNiet);
+							}); // zou altijd goed moeten gaan
+						}, 1000);
+					}
+				}
+			}
+		});
+		if (!debug) {
+			var aftellen = setInterval(function() {
+				if (0==(messageButton.value = Number(messageButton.value) - 1)) {
+					clearInterval(aftellen);
+					messageButton.value = "The loading should be over in seconds...";
+					messageButton.style.fontSize = "200%"
+				}
+			}, 1000);
+		} else {
+			var aftellen;
+			registreerIsUitgepakt();
+		}
+
+		// this function allows one to download data from some URL
+		// and later on operate some function over the text
+		// for we assume that it is a text download
+		function downloadText(name, hander) {
+			fetch(name)
+				.then((res) => { return res.blob(); })
+				.then((data) => { data.text()
+				.then((text) => {hander(text)}) })
+		}
+		
+		fetch("backup.tar")
+			.then((res) => { return res.blob(); })
+			.then((data) => { 
+				data.stream().getReader().read().then(function(x){
+					// store to /str/hello.tar
+					backupAsTar = x.value;
+				})
+			})
+		
+		fetch("alpha.tar")
+			.then((res) => { return res.blob(); })
+			.then((data) => { 
+				data.stream().getReader().read().then(function(x){
+					// store to /str/hello.tar
+					alphaAsTar = x.value;
+				})
+			})
+
+		downloadText("filelist", (text) => {fileList = text})
+		downloadText("relative_cleansave.json", (text) => {ccsave = JSON.parse(text)})
+		downloadText("buildings.csv", (text) => {
+			buildingTable = d3.csvParse(text)
+			downloadText("tables.json", (text) => {
+				save_tables = JSON.parse(text);
+				Object.keys(save_tables).forEach(function(c) {
+					save_tables[c] = d3.csvParse(save_tables[c])
+				});
+				console.log(save_tables.building$data)
+				buildings = save_tables.building$data.map(function(x){return x.x});
+				save_tables.building$data = {};
+				for (i = 0;i < buildings.length;i++) {
+					// JSON methods are required to make sure every table is unique
+					save_tables.building$data[buildings[i]] = JSON.parse(JSON.stringify(buildingTable));
+				}
+			})
+		})
+		downloadText("buildings.list", (text) => {buildingNames = text.replaceAll(".", "$").split("\n")})
+
+		const psv = d3.dsvFormat("|");
+		mapdotsdollar = {"$":".", ".":"$"};
+		downloadText("conversion.csv", (text) => {
+			conversions = psv.parse(text.replaceAll(/\.|\$/gi, function(matched){
+				return mapdotsdollar[matched];
+			}));
+		})
+		downloadText("upgrades.available", (text) => {upgradeIdsAvailable = text.split("\n").map(function(x) {return Number(x)}) })
+
+	</script>
+</html>
