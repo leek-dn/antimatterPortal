@@ -83,7 +83,7 @@ For the backup file does not really contain much user relevant information it is
 
 ### libraries
 
-At first my aproach to handle ADB files was to use a Java program. CheerpJ would assist me to run that in the browser. I used https://github.com/rustyx/android-backup-extractor/. This is a fork from the official program that even allowed to do the tar part of the work. I really wanted to do it that way for I did not have to care about the format. Now some problems rose by using that approach:
+At first my aproach to handle ADB files was to use a Java program (first attempt are mostly the files in the oldfiles folder). CheerpJ would assist me to run that in the browser. I used https://github.com/rustyx/android-backup-extractor/. This is a fork from the official program that even allowed to do the tar part of the work. I really wanted to do it that way for I did not have to care about the format. Now some problems rose by using that approach:
 
 * I needed to compile the program. When I did, it just works fine.
 * Using CheerpJ did now allow me to detect when the program is loaded. I can only call functions in the Java program when it is loaded and I did not want to change CheerpJ (or the Java program) to adjust that for me. Actually calling functions does have callbacks so *then* I can detect when it is done.
