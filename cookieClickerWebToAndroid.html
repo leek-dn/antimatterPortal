@@ -123,7 +123,7 @@
 		</h1>
 		<input type="file" onchange="bestandwordingelezen(this)" style = "display: none;">
 		<div id = "console" style="display: none" textContent=""></div>
-		<input type="button" id="button" value="60" disabled=true style = "width: 80%;bottom: 10%;position: absolute;height: 70%;font-size: 1000%;left: 10%;top: 15%;" />
+		<input type="button" id="button" value="2" disabled=true style = "width: 80%;bottom: 10%;position: absolute;height: 70%;font-size: 1000%;left: 10%;top: 15%;" />
 		<input type="text" id="pastefield" autofocus onpaste="plakken(this)" onfocusout="plakFocusKwijt(this)" placeholder="Click here first if you want to paste your save..." />
 		<div style="bottom:0%;left:40%;position: absolute;display: none;" id = "idChoice">
 			<input onclick="lockSpecialIDfield(this)" checked type="radio" id="vccm" name="whatid" value="60">
@@ -253,126 +253,23 @@
 			a.value = "";
 		}
 
-		// potential functional method
-		function deleteAllFilesFromCheerp(callBack) {
-			// this is a radical method and might require reloading of page
-			window.indexedDB.deleteDatabase("cjFS_/files/")
-		}
-
-		// check if the file is present in the virtual filesystem 'files'
-		// of cheerpJ (java on web)
-		// if it does, executes yes, if not executes no(filename/error, undefined/-1)
-		function checkIfFileIsPresent(filename, yes, no) {
-			// weer gaan laden
-			var openResult = indexedDB.open("cjFS_/files/");
-			openResult.onsuccess = function(e) {
-				var tx = this.result.transaction("files", "readonly");
-				// Retrieve the first unallocated inode
-				var store = tx.objectStore("files");
-				var ga = store.get(filename);
-				ga.onsuccess = function(v) {
-					m = v.target.result
-					if(m==undefined) {
-						no(filename, -1)
-					} else {
-						yes(0)
-					}
-					return;
-				}
-				ga.onerror = function(e) {
-					no(e)
-				}
-			}
-			openResult.onerror = function(e) {
-				no(e)
-			}
-		}
-		// check if the file is present in the virtual filesystem 'files'
-		// of cheerpJ (java on web)
-		// if it does, executes yes with file contents, if not executes no(filename/error, undefined/-1)
+		// check if the file is present in the virtual filesystem
+		// if it does, return file contents, if not return empty string
 		function fileContents(filename, yes = function(x) {console.log(x)}, no) {
 			// weer gaan laden
-			var openResult = indexedDB.open("cjFS_/files/");
-			openResult.onsuccess = function(e) {
-				var tx = this.result.transaction("files", "readonly");
-				// Retrieve the first unallocated inode
-				var store = tx.objectStore("files");
-				var ga = store.get(filename);
-				ga.onsuccess = function(v) {
-					m = v.target.result
-					if(m==undefined) {
-						no(filename, -1)
-					} else {
-						yes(m.contents);
-					}
-					return;
-				}
-				ga.onerror = function(e) {
-					no(e)
-				}
-			}
-			openResult.onerror = function(e) {
-				no(e)
-			}
+			return ""
 		}
 		function listAll() {
-			// weer gaan laden
-			var openResult = indexedDB.open("cjFS_/files/");
-			openResult.onsuccess = function(e) {
-				var tx = this.result.transaction("files", "readwrite");
-				// Retrieve the first unallocated inode
-				var store = tx.objectStore("files");
-				var ga = store.getAllKeys()
-				ga.onsuccess = function(v) {
-					n = v.target.result
-					for (i = 0;i < n.length;i++) {
-						console.log(n[i])
-					}
-				}
+			for (var i = 0;i < bestanden.length;i++) {
+				console.log(bestanden[i].filename)
 			}
 		}
 		// check if the file is present in the virtual filesystem 'files'
 		// of cheerpJ (java on web)
 		// if it does, executes yes with file contents, if not executes no(filename/error, undefined/-1)
-		function dirMoveOperation(source, target, yes, no) {
-			// weer gaan laden
-			var openResult = indexedDB.open("cjFS_/files/");
-			openResult.onsuccess = function(e) {
-				var tx = this.result.transaction("files", "readwrite");
-				// Retrieve the first unallocated inode
-				var store = tx.objectStore("files");
-				var ga = store.getAllKeys()
-				ga.onsuccess = function(v) {
-					n = v.target.result
-					var g = store.getAll();
-					g.onsuccess = function(w) {
-						console.log(w)
-						m = w.target.result
-						console.log(i)
-						for (i = 0;i < n.length;i++) {
-							if (n[i].startsWith(source)) {
-								console.log(n[i])
-								store.put(m[i], n[i].replace(source, target)).onsuccess = function(vw) {
-									console.log(vw.target)
-									store.delete(vw.target.result.replace(target, source));
-								}
-							}
-						}
-					}
-					if(n==undefined) {
-						no(-1)
-					} else {
-						yes();
-					}
-					return;
-				}
-				ga.onerror = function(e) {
-					no(e)
-				}
-			}
-			openResult.onerror = function(e) {
-				no(e)
-			}
+		function dirMoveOperation(source, target) {
+			// places the source dir after the longest available path
+			// TODO
 		}
 		// store file in virtual filesystem
 		// of cheerpJ (java on web)
@@ -381,107 +278,16 @@
 		// data, the data object also has to have a permType, type (file/dir), inodeId and the content is contents
 		function storeToFile(filename, data, yes, no) {
 			// weer gaan laden
-			var openResult = indexedDB.open("cjFS_/files/");
-			openResult.onsuccess = function(e) {
-				var tx = this.result.transaction("files", "readwrite");
-				// Retrieve the first unallocated inode
-				var store = tx.objectStore("files");
-				var ga = store.put(data, filename);
-				ga.onsuccess = function(v) {
-					m = v.target.result
-					yes(0);
-					return;
-				}
-				ga.onerror = function(e) {
-					no(e)
+			for (var i = 0;i < bestanden.length;i++) {
+				console.log(bestanden[i].filename)
+				if (bestanden[i].filename==filename) {
+					bestanden[i].fileData = data;
+					return true;
 				}
 			}
-			openResult.onerror = function(e) {
-				no(e)
-			}
-		}
-		
+			
+			// TODO if the file does not exist
 
-		// check if the file is present in the virtual filesystem 'files'
-		// of cheerpJ (java on web)
-		// if it does, executes yes with file contents, if not executes no(filename/error, undefined/-1)
-		function modifyFileByReplacing(filename, source, target, yes, no) {
-			// weer gaan laden
-			var openResult = indexedDB.open("cjFS_/files/");
-			openResult.onsuccess = function(e) {
-				var tx = this.result.transaction("files", "readwrite");
-				// Retrieve the first unallocated inode
-				var store = tx.objectStore("files");
-				var ga1 = store.get(filename);
-				ga1.onsuccess = function(v) {
-					m = v.target.result
-					if(m==undefined) {
-						no(filename, -1)
-					} else {
-						console.log(m)
-						console.log(new TextDecoder().decode(m.contents))
-						m.contents = Uint8Array.from(
-							new TextDecoder().decode(m.contents).replaceAll(source, target)
-							.split("").map(x => x.charCodeAt()))
-						
-						var ga2 = store.put(m, filename);
-						ga2.onsuccess = function(v) {
-							m = v.target.result
-							yes(0);
-							return;
-						}
-						ga2.onerror = function(e) {
-							no(e)
-						}
-						yes(m.contents);
-						
-					}
-					return;
-				}
-				ga1.onerror = function(e) {
-					no(e)
-				}
-			}
-			openResult.onerror = function(e) {
-				no(e)
-			}
-		}
-		// this only works on already exsisting files
-		function modifyFileByOverWriting(filename, data, yes, no) {
-			// weer gaan laden
-			var openResult = indexedDB.open("cjFS_/files/");
-			openResult.onsuccess = function(e) {
-				var tx = this.result.transaction("files", "readwrite");
-				// Retrieve the first unallocated inode
-				var store = tx.objectStore("files");
-				var ga1 = store.get(filename);
-				ga1.onsuccess = function(v) {
-					m = v.target.result
-					if(m==undefined) {
-						no(filename, -1)
-					} else {
-						m.contents = data
-						var ga2 = store.put(m, filename);
-						ga2.onsuccess = function(v) {
-							m = v.target.result
-							yes(0);
-							return;
-						}
-						ga2.onerror = function(e) {
-							no(e)
-						}
-						yes(m.contents);
-						
-					}
-					return;
-				}
-				ga1.onerror = function(e) {
-					no(e)
-				}
-			}
-			openResult.onerror = function(e) {
-				no(e)
-			}
 		}
 
 		// this function is called on reading the file
@@ -490,11 +296,6 @@
 			let file = input.files[0];
 			verwerkBestand(file);
 		}
-	if (!debug) {
-		// cheerpjInit({disableErrorReporting:true}, {disableLoadTimeReporting:true});
-		cheerpjInit({disableErrorReporting:true}, {disableLoadTimeReporting:true});
-		cheerpjRunJar("./cheerp/abe.jar");
-	}
 
 		// this function is called when the script founds the tar file extracted
 		function registreerIsUitgepakt(e) {
@@ -818,7 +619,7 @@
 		// but first makes the id of the app/backup right of applicable
 		function finalizeBackupForDownloadButFirstAppId() {
 			if (getId()=="org.dashnet.cookieclicker") {
-				finalizeBackupForDownload();
+				opslaanBestand();
 			} else {
 				deAppId = getId();
 				// rename into files
@@ -828,7 +629,7 @@
 						// rename all files
 						dirMoveOperation("/apps/f/org.dashnet.cookieclicker", "/apps/f/" + deAppId, function(x) {
 							console.log(x)
-							finalizeBackupForDownload()
+							opslaanBestand()
 						}, function(x){
 							console.log("error moving files")
 							console.log("(this shouldn't happen)")
@@ -846,30 +647,16 @@
 		
 		// this function turns the backup files in virtual filesystem of Cheerp
 		// into a downloadable file that is presented to the user, or an error
-		function finalizeBackupForDownload() {
-			tarCompress("/files/made2.tar", "/files", function(x) {
-				pack("/files/made2.tar", "/files/hello.adb", "", function(y) {
-					userMessages.push("Succesfully created!");
-					fileContents("/hello.adb", function(bytedata) {
-						headerElement.textContent = "Finished. Now use 'adb restore yourBackup.adb' and claim your process on mobile"
-						var blob = new Blob([bytedata], {type: "application/x-google-ab; charset=binary"});
-						saveAs(blob, "yourBackup.adb");
-						// deleteAllFilesFromCheerp(); // do this for now
-						eindigLaden();
-					}, function(z) {
-						userMessages.push("The file could not retrieve");
-						userMessages.push("You shouldn't be able to see this error message");
-						eindigLaden();
-					});
-				});
-			}, function(x) {
-				console.log("Something went wrong on compressing the tar");
-				userMessages.push("Something went wrong on compressing the tar");
-				userMessages.push("This shouldn't be happening");
-				console.log(x)
-				eindigLaden();
-				return;
-			});
+		function opslaanBestand(bestandenVoorTar) {
+			const tar = tarts(bestandenVoorTar);
+			compressedData = window.pako.deflate(tar);
+			var adb = new Uint8Array(compressedData.length + header.length);
+			adb.set(header);
+			adb.set(compressedData, header.length);
+			console.log(adb)
+			var adbblob = new Blob([adb], {type: "application/x-google-ab; charset=binary"});
+			saveAs(adbblob, "yourBackup.adb");
+
 		}
 		
 		// decode the save to its textual splitted form and then call the verwerkSave function
@@ -933,15 +720,13 @@
 					console.log("Is een adb backup file");
 					backupData = new Uint8Array(x);
 					gaWeerLaden();
-					cheerpjAddStringFile("/str/hello.adb", backupData);
-					unpack("/str/hello.adb", "/files/hello.tar", "", registreerTarAanwezigheid, tochNiet);
+					// TODO
 					break;
 				case "tar":
 					// bestand is een tar
 					console.log("Is een tar file");
 					gaWeerLaden();
-					cheerpjAddStringFile("/str/hello.tar", backupData);
-					tarExtract("/str/hello.tar", "/files", registreerTarAanwezigheid, tochNiet);
+					// TODO
 					break;
 				case "websave":
 					// bestand is een websave
@@ -1003,50 +788,6 @@
 		}
 
 
-		// This observer is to check when cheerpj/the jar file are ready
-		// the moment we detect the jar wrote something about ABE_PASSWD
-		// on the console (last line of usage message)
-		// we assume that the jar is ready (which seemed to be)
-		// the console is actually a HTML element with
-		// id = console
-		Object.defineProperty(consoleElement, "textContent", {
-			// Don't override the getter, but stub it in.
-			get: function() {
-				return this.getAttribute("textContent");
-			},
-			// In the setter, we want to set the textContent
-			//  and also fire off the change event.
-			//  By doing this, the coder changing the
-			//  textContent never needs worry about it.
-			set: function(val) {
-				// handle textContent change here
-				this.setAttribute("textContent", val);
-				this.innerText = val;
-				// fire the event
-				var evt = document.createEvent("HTMLEvents");
-				evt.initEvent("change", false, true);
-				consoleElement.dispatchEvent(evt);
-				if (-1!=consoleElement.textContent.indexOf("ABE_PASSWD")) {
-					if (notLoadedYet) {
-						// jar is loaded
-						notLoadedYet = false;
-						if (messageButton.style.display == "none") {
-							eindigLaden();
-						}
-						// this has to happen here for then it is loaded
-						cheerpjAddStringFile("/str/hello.tar", backupAsTar);
-						cheerpjAddStringFile("/str/alpha.tar", alphaAsTar);
-						// the code has to extract the tarfile
-						setTimeout(function() {
-							tarExtract("/str/alpha.tar", "/files/", function(x) {
-								// moet in deze volgorde wegens .filelist
-								tarExtract("/str/hello.tar", "/files/", fileListCustom, tochNiet);
-							}); // zou altijd goed moeten gaan
-						}, 1000);
-					}
-				}
-			}
-		});
 		if (!debug) {
 			var aftellen = setInterval(function() {
 				if (0==(messageButton.value = Number(messageButton.value) - 1)) {

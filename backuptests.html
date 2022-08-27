@@ -54,9 +54,6 @@
 		
 		function oplaanBestand(bestandenVoorTar) {
 			const tar = tarts(bestandenVoorTar);
-			console.log(tar)
-			// var tarblob = new Blob([tar], {type: "application/x-tar; charset=binary"});
-			// saveAs(tarblob, "yourBackup.tar");
 			compressedData = window.pako.deflate(tar);
 			var adb = new Uint8Array(compressedData.length + header.length);
 			adb.set(header);
