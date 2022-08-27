@@ -133,3 +133,7 @@ The only exceptions are:
 WTFPL is for the tarts library (static_assets/tarts.js) See http://www.wtfpl.net/ for more details.
 static_assets/buildings.csv and static_assets/tables.json are both based on the works of https://cookieclicker.fandom.com/wiki/Save (The CookieClicker Wikia) and those contributions are under the creative commons licence: https://creativecommons.org/licenses/by-nc/3.0/legalcode
 ISC License is for static_assets/d3.js (https://github.com/d3/d3/blob/main/LICENSE)
+
+## R script
+
+The R script is an implementation of the conversion process as well. This script however currently requires an folder where the backup is stored ('backupfolder'). Also it requires you to store the save in a file called backup on level above this repo, or in clipboard and select the right line to execute. As you can see, this script is not for non developers that want a solution that just works. For that, the HTML file is made. Parts of the R script generate files required for het HTML file.
