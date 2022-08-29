@@ -17,13 +17,15 @@ sed 's/UPGRADES AVAILABLE/'$(tr \\n , < static_assets/upgrades.available|sed 's/
 # TODO: standaard tar inladen van website
 # vervang textual files die nodig zijn om het programma te laten werken
 vervangAMetb64B "RELATIVE CLEAN SAVE" static_assets/relative_cleansave.json
-sed -i "s/BUILDINGS CSV/$(tr '\n' '@' < static_assets/buildings.csv | sed -e 's/"/\\\\"/g' -e 's/@/\\\\n/' )/" "$outputFile"
+sed -i "s/BUILDINGS CSV/$(tr '\n' '@' < static_assets/buildings.csv | sed -e 's/"/\\\\"/g' -e 's/@/\\\\n/g' )/" "$outputFile"
 vervangAMetb64B "TABLES JSON" static_assets/tables.json
 vervangAMetb64B "FILELIST" static_assets/filelist
 vervangAMetb64B "CONVERSION CSV" static_assets/conversion.csv
+vervangAMetb64B "ALPHA ADB" static_assets/alpha.adb
+vervangAMetb64B "BACKUP ADB" static_assets/backup.adb
 # first split d3 in multiple files because d3 is substituted as a argument to sed
 # therefore the file lands on the stack. However the size of that is limited
-# else one gets an aguments too large errorh
+# else one gets an aguments too large error
 [ ! -f static_assets/d3_1.js ] && {
  fold -w $((278580/15)) static_assets/d3.js|sed -n '1,2p' > static_assets/d3_1.js
  for x in {3..16};do

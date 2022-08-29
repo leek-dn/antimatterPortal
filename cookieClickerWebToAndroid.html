@@ -86,20 +86,6 @@
 			animation-direction: alternate;
 			border: none;
 		}
-		#loader {
-			border: 16px solid #f3f3f3; /* Light grey */
-			border-top: 16px solid blue;
-			border-right: 16px solid green;
-			border-bottom: 16px solid red;
-			border-radius: 50%;
-			width: 200px;
-			height: 200px;
-			animation: spin 2s linear infinite;
-			top: calc(50% - 116px);
-			left: calc(50% - 116px);
-			position: absolute;
-			z-index: 100;
-		}
 
 		@keyframes spin {
 			0% { transform: rotate(0deg); }
@@ -117,12 +103,10 @@
 			alphadisp.style.display = "block";
 		}
 		return false;' >
-		<div id="loader"></div>
 		<h1 id="header" style="font-size: 300%;position: absolute;top: 10px;left: 50px;  -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;">
 			Loading this application takes time...
 		</h1>
 		<input type="file" onchange="bestandwordingelezen(this)" style = "display: none;">
-		<div id = "console" style="display: none" textContent=""></div>
 		<input type="button" id="button" value="2" disabled=true style = "width: 80%;bottom: 10%;position: absolute;height: 70%;font-size: 1000%;left: 10%;top: 15%;" />
 		<input type="text" id="pastefield" autofocus onpaste="plakken(this)" onfocusout="plakFocusKwijt(this)" placeholder="Click here first if you want to paste your save..." />
 		<div style="bottom:0%;left:40%;position: absolute;display: none;" id = "idChoice">
@@ -139,18 +123,189 @@
 	</body>
 	<script>
 	
-		var notLoadedYet = true;
-		var backupIsAvailable = false; // this boolean is present to check the availability of a backup on which we load our save
-		var tarIsUncompressed = false;
-		var backupIsExtracted = false;
-		var backupIsFromInternal = true;
-		var backupIsChecked = false; // this is only needed for the tar function
-		var debug = false;
-		var readyForUpload = debug; // on default false
-		var backupAsTar;
-		var alphaAsTar;
+
+		function b64ToUint6(nChr) {
+		return nChr > 64 && nChr < 91 ?
+			nChr - 65
+			: nChr > 96 && nChr < 123 ?
+			nChr - 71
+			: nChr > 47 && nChr < 58 ?
+			nChr + 4
+			: nChr === 43 ?
+			62
+			: nChr === 47 ?
+			63
+			:
+			0;
+		}
+
+		function base64DecToArr(sBase64, nBlocksSize){ 
+		const sB64Enc = sBase64.replace(/[^A-Za-z0-9+/]/g, "");
+		const nInLen = sB64Enc.length;
+		const nOutLen = nBlocksSize ? Math.ceil((nInLen * 3 + 1 >> 2) / nBlocksSize) * nBlocksSize : nInLen * 3 + 1 >> 2;
+		const taBytes = new Uint8Array(nOutLen);
+
+		let nMod3;
+		let nMod4;
+		let nUint24 = 0;
+		let nOutIdx = 0;
+		for (let nInIdx = 0; nInIdx < nInLen; nInIdx++) {
+			nMod4 = nInIdx & 3;
+			nUint24 |= b64ToUint6(sB64Enc.charCodeAt(nInIdx)) << 6 * (3 - nMod4);
+			if (nMod4 === 3 || nInLen - nInIdx === 1) {
+			nMod3= 0;
+			while (nMod3 < 3 && nOutIdx < nOutLen) {
+				taBytes[nOutIdx] = nUint24 >>> (16 >>> nMod3 & 24) & 255;
+				nMod3++;
+				nOutIdx++;
+			}
+			nUint24 = 0;
+
+			}
+		}
+
+		return taBytes;
+		}
+
+		/* Base64 string to array encoding */
+		function uint6ToB64(nUint6) {
+		return nUint6 < 26 ?
+			nUint6 + 65
+			: nUint6 < 52 ?
+			nUint6 + 71
+			: nUint6 < 62 ?
+			nUint6 - 4
+			: nUint6 === 62 ?
+			43
+			: nUint6 === 63 ?
+			47
+			:
+			65;
+		}
+
+		function base64EncArr(aBytes) {
+		let nMod3 = 2;
+		let sB64Enc = "";
+
+		const nLen = aBytes.length;
+		let nUint24 = 0;
+		for (let nIdx = 0; nIdx < nLen; nIdx++) {
+			nMod3 = nIdx % 3;
+			if (nIdx > 0 && (nIdx * 4 / 3) % 76 === 0) { 
+			sB64Enc += "\r\n";
+			}
+
+			nUint24 |= aBytes[nIdx] << (16 >>> nMod3 & 24);
+			if (nMod3 === 2 || aBytes.length - nIdx === 1) {
+			sB64Enc += String.fromCodePoint(uint6ToB64(nUint24 >>> 18 & 63), uint6ToB64(nUint24 >>> 12 & 63), uint6ToB64(nUint24 >>> 6 & 63), uint6ToB64(nUint24 & 63));
+			nUint24 = 0;
+			}
+		}
+		return sB64Enc.substr(0, sB64Enc.length - 2 + nMod3) + (nMod3 === 2 ? '' : nMod3 === 1 ? '=' : '==');
+		}
+
+		/* UTF-8 array to JS string and vice versa */
+
+		function UTF8ArrToStr(aBytes) {
+		let sView = "";
+		let nPart;
+		const nLen = aBytes.length;
+		for (let nIdx = 0; nIdx < nLen; nIdx++) {
+			nPart = aBytes[nIdx];
+			sView += String.fromCodePoint(
+			nPart > 251 && nPart < 254 && nIdx + 5 < nLen ? /* six bytes */
+				/* (nPart - 252 << 30) may be not so safe in ECMAScript! So…: */
+				(nPart - 252) * 1073741824 + (aBytes[++nIdx] - 128 << 24) + (aBytes[++nIdx] - 128 << 18) + (aBytes[++nIdx] - 128 << 12) + (aBytes[++nIdx] - 128 << 6) + aBytes[++nIdx] - 128
+			: nPart > 247 && nPart < 252 && nIdx + 4 < nLen ? /* five bytes */
+				(nPart - 248 << 24) + (aBytes[++nIdx] - 128 << 18) + (aBytes[++nIdx] - 128 << 12) + (aBytes[++nIdx] - 128 << 6) + aBytes[++nIdx] - 128
+			: nPart > 239 && nPart < 248 && nIdx + 3 < nLen ? /* four bytes */
+				(nPart - 240 << 18) + (aBytes[++nIdx] - 128 << 12) + (aBytes[++nIdx] - 128 << 6) + aBytes[++nIdx] - 128
+			: nPart > 223 && nPart < 240 && nIdx + 2 < nLen ? /* three bytes */
+				(nPart - 224 << 12) + (aBytes[++nIdx] - 128 << 6) + aBytes[++nIdx] - 128
+			: nPart > 191 && nPart < 224 && nIdx + 1 < nLen ? /* two bytes */
+				(nPart - 192 << 6) + aBytes[++nIdx] - 128
+			: /* nPart < 127 ? */ /* one byte */
+				nPart
+			);
+		}
+		return sView;
+		}
+
+		function strToUTF8Arr(sDOMStr) {
+		let aBytes;
+		let nChr;
+		const nStrLen = sDOMStr.length;
+		let nArrLen = 0;
+
+		/* mapping… */
+		for (let nMapIdx = 0; nMapIdx < nStrLen; nMapIdx++) {
+			nChr = sDOMStr.codePointAt(nMapIdx);
+
+			if (nChr > 65536) {
+			nMapIdx++;
+			}
+
+			nArrLen += nChr < 0x80 ? 1 : nChr < 0x800 ? 2 : nChr < 0x10000 ? 3 : nChr < 0x200000 ? 4 : nChr < 0x4000000 ? 5 : 6;
+		}
+
+		aBytes = new Uint8Array(nArrLen);
+
+		/* transcription… */
+		let nIdx = 0;
+		let nChrIdx = 0;
+		while (nIdx < nArrLen) {
+			nChr = sDOMStr.codePointAt(nChrIdx);
+			if (nChr < 128) {
+			/* one byte */
+			aBytes[nIdx++] = nChr;
+			} else if (nChr < 0x800) {
+			/* two bytes */
+			aBytes[nIdx++] = 192 + (nChr >>> 6);
+			aBytes[nIdx++] = 128 + (nChr & 63);
+			} else if (nChr < 0x10000) {
+			/* three bytes */
+			aBytes[nIdx++] = 224 + (nChr >>> 12);
+			aBytes[nIdx++] = 128 + (nChr >>> 6 & 63);
+			aBytes[nIdx++] = 128 + (nChr & 63);
+			} else if (nChr < 0x200000) {
+			/* four bytes */
+			aBytes[nIdx++] = 240 + (nChr >>> 18);
+			aBytes[nIdx++] = 128 + (nChr >>> 12 & 63);
+			aBytes[nIdx++] = 128 + (nChr >>> 6 & 63);
+			aBytes[nIdx++] = 128 + (nChr & 63);
+			nChrIdx++;
+			} else if (nChr < 0x4000000) {
+			/* five bytes */
+			aBytes[nIdx++] = 248 + (nChr >>> 24);
+			aBytes[nIdx++] = 128 + (nChr >>> 18 & 63);
+			aBytes[nIdx++] = 128 + (nChr >>> 12 & 63);
+			aBytes[nIdx++] = 128 + (nChr >>> 6 & 63);
+			aBytes[nIdx++] = 128 + (nChr & 63);
+			nChrIdx++;
+			} else /* if (nChr <= 0x7fffffff) */ {
+			/* six bytes */
+			aBytes[nIdx++] = 252 + (nChr >>> 30);
+			aBytes[nIdx++] = 128 + (nChr >>> 24 & 63);
+			aBytes[nIdx++] = 128 + (nChr >>> 18 & 63);
+			aBytes[nIdx++] = 128 + (nChr >>> 12 & 63);
+			aBytes[nIdx++] = 128 + (nChr >>> 6 & 63);
+			aBytes[nIdx++] = 128 + (nChr & 63);
+			nChrIdx++;
+			}
+			nChrIdx++;
+		}
+
+		return aBytes;
+		}
+	
+		var readyForUpload = false; // on default false
+		// to store the datas
+		var backupAsTar, alphaAsTar;
+		var backupAsAdb, alphaAsAdb;
+		
 		var backupData;
 		var userMessages = [];
+		var bestanden = {}, alphaBestanden = {}, appid = "";
 
 		// variables needed for the actual conversion
 		var orig_full_save;
@@ -163,64 +318,28 @@
 
 		var n;
 		var fileList;
+		var saveGeladen = false;
 		
 		// HTML elements
-		var consoleElement = document.getElementById('console');
 		var messageButton  = document.getElementById('button');
 		var headerElement  = document.getElementById('header');
-		var loaderElement  = document.getElementById('loader');
 		var textInputElement=document.getElementById('pastefield');
 		var alpha          = document.getElementById('alphaCheck');
-		// functions that call Java code
-		function tarExtract(source, destination, yes = function() {}, no = function() {}) {
-			return cjCall("org.nick.abe.AndroidTar", "extractTar", source, destination, ".filelist").then(yes, no);
-		}
-		
-		function tarCompress(destination, source, yes = function() {}, no = function() {}) {
-			return cjCall("org.nick.abe.AndroidTar", "createTar", destination, source, "/files/.filelist").then(yes, no);
-		}
-		
-		function unpack(source, destination, password = "", yes = function() {}, no = function() {}) {
-			return cjCall("org.nick.abe.AndroidBackup", "extractAsTar", source, destination, password).then(yes, no);
-		}
-		
-		function pack(source, destination, password = "", yes = function() {}, no = function() {}) {
-			return cjCall("org.nick.abe.AndroidBackup", "packTar", source, destination, password, true).then(yes, no);
-		}
-		
+
 		// function to call when one should/can upload
 		function staOpenVoorUpload() {
 			messageButton.disabled = false;
 			readyForUpload = true;
-			loaderElement.style.display = "none";
 			textInputElement.style.display = "block";
 		}
 		
 		function getId() {
 			vanilla = document.getElementById("vccm").checked
-			trix = document.getElementById("vccm").checked
-			other = document.getElementById("vccm").checked
+			trix = document.getElementById("cct").checked
+			other = document.getElementById("other").checked
 			if (vanilla) return "org.dashnet.cookieclicker"
 			if (trix) return "org.dashnet.cookieclickertrix"
 			if (other) return document.getElementById("specialid").value
-		}
-		
-		// to call after the upload/submission of save is started
-		function gaWeerLaden() {
-			messageButton.disabled = true;
-			messageButton.value = "";
-			readyForUpload = false;
-			loaderElement.style.display = "block";
-			headerElement.textContent = "Processing"
-			textInputElement.style.display = "none";
-			textInputElement.value = "";
-			messageLoop();
-		}
-		// ends the loading
-		function eindigLaden() {
-			messageButton.style.display = "none";
-			loaderElement.style.display = "none";
-			clearInterval(aftellen);
 		}
 		
 		function unlockSpecialIDfield(a) {
@@ -232,6 +351,22 @@
 			document.getElementById('specialid').value = "";
 		}
 		
+		// to call after the upload/submission of save is started
+		function gaWeerLaden() {
+			messageButton.disabled = true;
+			messageButton.value = "";
+			readyForUpload = false;
+			headerElement.textContent = "Processing"
+			textInputElement.style.display = "none";
+			textInputElement.value = "";
+			messageLoop();
+		}
+		// ends the loading
+		function eindigLaden() {
+			messageButton.style.display = "none";
+			clearInterval(aftellen);
+		}
+		
 		// this function is called when is pasted
 		function plakken(a) {
 			if (readyForUpload) {
@@ -240,12 +375,13 @@
 				else {
 					if (a.value.trim().endsWith("%21")) {
 						headerElement.textContent = "Parsing the save";
-						simpleSaveProcess(a.value);
+						verwerkBestand(new File([a.value], "webCookieClicker.backup", {type: "text/plain"}));
 					} else {
 						headerElement.textContent = "The save format is incorrect. Have you actually copied the save?";
 					}
 				}
 			}
+			eindigLaden();
 		}
 		// lost focus on the paste text element
 		function plakFocusKwijt(a) {
@@ -256,7 +392,7 @@
 		// check if the file is present in the virtual filesystem
 		// if it does, return file contents, if not return empty string
 		function fileContents(filename, yes = function(x) {console.log(x)}, no) {
-			// weer gaan laden
+			// TODO...
 			return ""
 		}
 		function listAll() {
@@ -271,15 +407,11 @@
 			// places the source dir after the longest available path
 			// TODO
 		}
-		// store file in virtual filesystem
-		// of cheerpJ (java on web)
-		// if it does, executes yes, if not executes no(error)
-		// this function does not work if you just put down the
-		// data, the data object also has to have a permType, type (file/dir), inodeId and the content is contents
-		function storeToFile(filename, data, yes, no) {
-			// weer gaan laden
+		// store file in bestanden
+		// this function does not work if the file does not exist
+		function storeToFile(filename, data) {
+			filename = filename.replace(/^\//, "");
 			for (var i = 0;i < bestanden.length;i++) {
-				console.log(bestanden[i].filename)
 				if (bestanden[i].filename==filename) {
 					bestanden[i].fileData = data;
 					return true;
@@ -287,6 +419,7 @@
 			}
 			
 			// TODO if the file does not exist
+			debugger
 
 		}
 
@@ -297,79 +430,19 @@
 			verwerkBestand(file);
 		}
 
-		// this function is called when the script founds the tar file extracted
-		function registreerIsUitgepakt(e) {
-			eindigLaden();
-			backupIsExtracted = true;
-			messageButton.style.display = "block";
-			headerElement.textContent = "Now is the time to 'upload' the save file from your web version of cookieClicker";
-			messageButton.value = "You can drag the file on this window,\nclick this button to start uploading,\nor just paste with the shortcut of your computer";
-			messageButton.style.fontSize = "200%";
-			staOpenVoorUpload();
-		}
-		
-		// this function is called when the script founds the .tar file
-		function registreerTarAanwezigheid(e) {
-			eindigLaden();
-			tarIsUncompressed = true;
-			messageButton.style.display = "block";
-			messageButton.value = "Checking whether things are extracted...";
-			messageButton.style.fontSize = "200%"
-			checkIfFileIsPresent("/.filelist", registreerIsUitgepakt, tochNiet);
-		}
-		
-		// this function is called when the script founds the backup
-		function registreerBackupAanwezigheid(e) {
-			eindigLaden();
-			backupIsAvailable = true;
-			backupIsChecked = true;
-			checkIfFileIsPresent("/hello.tar", registreerTarAanwezigheid, tochNiet);
-		}
-
-		// this function is called when a file is not found
-		// based on the filename some action is taken
-		function tochNiet(name, e) {
-			if (e==-1) {
-				console.log(name)
-				console.log(e)
-				switch (name) {
-				case "/hello.adb":case "/strings/hello.adb":case "/files/hello.adb":
-					messageButton.style.display = "block";
-					messageButton.value = "This application only works if you first upload a\nlegitimate backup of your cookieclocker on mobile\nAndroid. " +
-						"It is okay if that backup hardly contains any,\nbut is used to patch the real save.";
-					messageButton.style.fontSize = "200%"
-					backupIsChecked = true;
-					staOpenVoorUpload();
-					break;
-				case "/hello.tar":case "/files/hello.tar":
-					// if the backup is not yet checked, maybe the backup only should be loaded.
-					// is the backup is already checked, we assume that we can decompress to tar.
-					if (!backupIsChecked) {
-						checkIfFileIsPresent("/hello.adb", registreerBackupAanwezigheid, tochNiet);
+		function modifyFileByReplacing(filename, source, target, then = function() {}, error = function() {}) {
+			filename = filename.replace(/^\//, "");
+			for (var i = 0;i < bestanden.length;i++) {
+				if (bestanden[i].filename==filename) {
+					if (typeof bestanden[i].fileData=="string") {
+						bestanden[i].fileData = bestanden[i].fileData.replaceAll(source, target);
 					} else {
-						messageButton.style.display = "block";
-						messageButton.value = "Decompressing...";
-						if (backupIsFromInternal) {
-							// actually this should always first extract and only if it gives error ask for password
-							unpack("/str/hello.adb", "/files/hello.tar", "", registreerTarAanwezigheid, tochNiet);
-						} else {
-							unpack("/str/hello.adb", "/files/hello.tar", prompt("Give password please...\nempty for no password", "Secret"), registreerTarAanwezigheid, tochNiet);
-						}
+						bestanden[i].fileData = new TextDecoder().decode(bestanden[i].fileData).replaceAll(source, target);
 					}
-					break;
-				case "/.filelist":case "/files/.filelist":
-					messageButton.style.display = "block";
-					messageButton.value = "Extracting...";
-					tarExtract("/files/hello.tar", "/files/", registreerIsUitgepakt, tochNiet);
-					break;
-				default:
-					text = "No value found";
-				} 
-			} else {
-				messageButton.style.display = "block";
-				messageButton.value = "Er is een error: " + e;
-				console.log(e);
+					return true;
+				}
 			}
+			return false;
 		}
 
 		// the upload event
@@ -380,10 +453,6 @@
 			}
 		}
 
-		// the click on the header makes the console text of java toggle visibility
-		headerElement.onclick = function() {
-			consoleElement.style.display = consoleElement.style.display=="block"?"none":"block";
-		}
 		// returns the names but then spaces replaced to dollar signs
 		function cleanNames(names) {
 			return names.map(function (name) {
@@ -554,32 +623,34 @@
 			})
 			
 			upgrades_as_list = orig_full_save['upgrades'].split("").map(x => {return x-"0"})
-			for (var i = 0;i < ccsave.upgrades.length/2;i++) {
-				ccsave.upgrades[i] = upgrades_as_list[i*2]*2 + upgrades_as_list[(i*2)+1];
+			uk = Object.keys(ccsave.upgrades)
+			for (var i = 0;i < uk.length;i++) {
+				ccsave.upgrades[uk[i]] = upgrades_as_list[uk[i]*2]*2 + upgrades_as_list[(uk[i]*2)+1];
 			}
 			ccsave.researchTM = 1000 * 60 * 30 / ((ccsave.upgrades[141]%2==1)? 10 : 1);
 			if (ccsave.researchUpgrade==0) ccsave.researchUpgrade = -1;
 			achievements_as_list = orig_full_save['achievements'].split("").map(x => {return x-"0"});
 			ccsave.achievs.undefined = achievements_as_list[0];
-			for (var i = 1;i < ccsave.achievs.length/2;i++) {
-				ccsave.achievs[i] = achievements_as_list;
+			ak = Object.keys(ccsave.achievs)
+			for (var i = 0;i < ak.length - 1;i++) {
+				ccsave.achievs[ak[i]] = achievements_as_list[ak[i]];
 			}
+			/*
 			// the path will change later possibly
-			modifyFileByOverWriting("/apps/org.dashnet.cookieclicker/f/CookieClickerSave" + (alpha.checked?"Test":"") + ".txt", JSON.stringify(ccsave), function(w) {
-				console.log("iets")
+			modifyFileByOverWriting(`/apps/${appid}/f/CookieClickerSave` + (alpha.checked?"Test":"") + ".txt", JSON.stringify(ccsave), function(w) {
 				// if alpha version is requested...
 				if (alpha.checked) {
-					aToBFile("/000005.ldb", function(x1) {
-						aToBFile("/000016.ldb", function(x2) {
-							aToBFile("/000018.log", function(x3) {
-								aToBFile("/000019.ldb", function(x4) {
-									aToBFile("/000021.log", function(x5) {
-										aToBFile("/000022.ldb", function(x6) {
-											aToBFile("/CURRENT", function(x7) {
-												aToBFile("/LOCK", function(x8) {
-													aToBFile("/LOG", function(x9) {
-														aToBFile("/LOG.old", function(x10) {
-															aToBFile("/MANIFEST-000001", function(x11) {
+					aToBFile("000005.ldb", function(x1) {
+						aToBFile("000016.ldb", function(x2) {
+							aToBFile("000018.log", function(x3) {
+								aToBFile("000019.ldb", function(x4) {
+									aToBFile("000021.log", function(x5) {
+										aToBFile("000022.ldb", function(x6) {
+											aToBFile("CURRENT", function(x7) {
+												aToBFile("LOCK", function(x8) {
+													aToBFile("LOG", function(x9) {
+														aToBFile("LOG.old", function(x10) {
+															aToBFile("MANIFEST-000001", function(x11) {
 																finalizeBackupForDownloadButFirstAppId()
 															})
 														})
@@ -600,11 +671,12 @@
 				userMessages.push("You should not see this error...");
 				eindigLaden();
 			});
+			*/
 		}
 		// copy contents of actualname to localstorage leveldb/actualname
 		function aToBFile(actualName, positiveCallBack) {
 			fileContents(actualName, function(x1) {
-				modifyFileByOverWriting("/apps/org.dashnet.cookieclicker/r/app_webview/Default/Local Storage/leveldb" + actualName, x1, function(y1) {
+				modifyFileByOverWriting(`/apps/${appid}/r/app_webview/Default/Local Storage/leveldb/${actualName}`, x1, function(y1) {
 					positiveCallBack(y1);
 				}, function(y1) {
 					console.log("Error: this shouldn't be happening..." + actualName)
@@ -623,24 +695,15 @@
 			} else {
 				deAppId = getId();
 				// rename into files
-				modifyFileByReplacing("/apps/org.dashnet.cookieclicker/_manifest", "org.dashnet.cookieclicker", deAppId, function(x){
+				modifyFileByReplacing("/apps/${appid}/_manifest", "${appid}", deAppId, function(x){
 					// rename .filelist
-					modifyFileByReplacing("/.filelist", "org.dashnet.cookieclicker", deAppId, function(x){
+					modifyFileByReplacing("/.filelist", "${appid}", deAppId, function(x){
 						// rename all files
-						dirMoveOperation("/apps/f/org.dashnet.cookieclicker", "/apps/f/" + deAppId, function(x) {
-							console.log(x)
-							opslaanBestand()
-						}, function(x){
-							console.log("error moving files")
-							console.log("(this shouldn't happen)")
-						})
 					}, function(y) {
 						console.log("error renaming filelist");
-						console.log(x)
 					});
 				}, function(y) {
 					console.log("error modifiying manifest");
-					console.log(x)
 				});
 			}
 		}
@@ -653,7 +716,6 @@
 			var adb = new Uint8Array(compressedData.length + header.length);
 			adb.set(header);
 			adb.set(compressedData, header.length);
-			console.log(adb)
 			var adbblob = new Blob([adb], {type: "application/x-google-ab; charset=binary"});
 			saveAs(adbblob, "yourBackup.adb");
 
@@ -674,8 +736,7 @@
 				// base64 decode de file
 				save = atob(save);
 				// split on save categories
-				save = save.split("|");
-				verwerkSave(save);
+				return save.split("|");
 			} else {
 				console.log("Wrong save format");
 				headerElement.textContent = "The save format is incorrect. Have you actually copied the save?";
@@ -707,36 +768,100 @@
 				}
 			}
 		}
+		
+		function adbToTar(data) {
+			return window.pako.inflate(data.subarray(24));
+		}
+		
+		function tarToAdb(data) {
+			// header as Uint8Array
+			var header = (Uint8Array.from("ANDROID BACKUP\n5\n1\nnone\n".split("").map(x => x.charCodeAt())));
+			// compress the data
+			compressedData = window.pako.deflate(data);
+			// combine header + compressed data
+			var adb = new Uint8Array(compressedData.length + header.length);
+			adb.set(header);
+			adb.set(compressedData, header.length);
+			return adb;
+		}
+		
+		function tarExtract(data) {
+			return untar(data);
+		}
+		
+		function tarCompress(data) {
+			return tarts(data);
+		}
+		
+		function oplaanBestand(bestandenVoorTar) {
+			const tar = tarCompress(bestandenVoorTar);
+			var adbblob = new Blob([tarToAdb(tar)], {type: "application/x-google-ab; charset=binary"});
+			saveAs(adbblob, "yourBackup.adb");
+		}
+
+		
+		function maakEnSave(bestanden, ccsave) {
+			// convert the websave en sla het op
+			storeToFile(`apps/${appid}/f/CookieClickerSave.txt`, JSON.stringify(ccsave))
+			toId = getId();
+			modifyFileByReplacing(`apps/${appid}/_manifest`, appid, toId);
+			storeTar = [];
+			for (var i = 0; i < bestanden.length;i++) {
+				if (bestanden[i].filename!=undefined) {
+					storeTar.push({name: bestanden[i].filename.replace(new RegExp(`^apps/${appid}/`), `apps/${toId}/`), content: bestanden[i].fileData});
+				}
+			}
+			oplaanBestand(storeTar)
+		}
 			
 		// this function processes the file when it is uploaded
 		// it detects the filetype and then executes the right action
 		function verwerkBestand(bestand) {
-			console.log('... file.name = ' + bestand.name);
-			bestand.arrayBuffer().then(function(x) {
-				fileType = typeOfFile(x);
-				switch (fileType) {
+			var deData = {};
+			console.log('Processing file: ' + bestand.name);
+			return bestand.arrayBuffer().then(function(x) {
+				var result;
+				data = new Uint8Array(x)
+				switch (typeOfFile(x)) {
 				case "adb":
 					// bestand is een adb file
-					console.log("Is een adb backup file");
-					backupData = new Uint8Array(x);
-					gaWeerLaden();
-					// TODO
-					break;
+					// nu hier verwerken
+					result = adbToTar(data);
 				case "tar":
 					// bestand is een tar
-					console.log("Is een tar file");
-					gaWeerLaden();
-					// TODO
-					break;
+					if ((typeof result)=="undefined") result = data;
+					deData = tarExtract(result);
+					if (deData.filter(function(x) {return x.filename=="CURRENT"}).length > 0) {
+						// alpha data
+						alphaBestanden = deData;
+					} else {
+						// normale backup
+						bestanden = deData;
+						appid = bestanden[0].filename.split("/")[1];
+						if (saveGeladen) maakEnSave(bestanden, ccsave);
+					}
+					return deData;
 				case "websave":
 					// bestand is een websave
-					simpleSaveProcess(new TextDecoder().decode(new Uint8Array(x)));
+					save = new TextDecoder().decode(data);
+					save = simpleSaveProcess(save);
+					if (save!=undefined) {
+						if (save!=false) {
+							saveGeladen = true;
+							if (bestanden==undefined) {
+								document.write("Nu nog een backup nodig<br/>");
+							} else {
+								verwerkSave(save);
+								maakEnSave(bestanden, ccsave)
+								return ccsave;
+							}
+						}
+					}
 					break;
 				default:
 					console.log("File format not recognized");
-					messageButton.style.display = "block";
-					messageButton.value = "The file you provided contains an unknown file structure.";
 				}
+
 			}, function(e) {
 				console.log("Error reading the file...");
 			});
@@ -747,7 +872,7 @@
 
 			// Prevent default behavior (Prevent file from being opened)
 			ev.preventDefault();
-
+			console.log(ev)
 			if (ev.dataTransfer.items) {
 				// Use DataTransferItemList interface to access the file(s)
 				if (ev.dataTransfer.items.length>2) {
@@ -755,7 +880,7 @@
 					messageButton.value = "You uploaded more than 2 files at once.\nThis is probably not what you want.";
 					messageButton.style.fontSize = "200%";
 				} else {
-					verwerkBestand(ev.dataTransfer.items[0].getAsFile());
+					data = verwerkBestand(ev.dataTransfer.items[0].getAsFile());
 					// TODO: should also look to the other file...
 				}
 			} else {
@@ -767,7 +892,7 @@
 					messageButton.value = "You uploaded more than 2 files at once.\nThis is probably not what you want.";
 					messageButton.style.fontSize = "200%";
 				} else {
-					verwerkBestand(ev.dataTransfer.files[0]);
+					data = verwerkBestand(ev.dataTransfer.files[0]);
 					// TODO: should also look to the other file...
 				}
 				for (let i = 0; i < ev.dataTransfer.files.length; i++) {
@@ -781,43 +906,19 @@
 			// Prevent default behavior (Prevent file from being opened)
 			ev.preventDefault();
 		}
-		
-		function fileListCustom() {
-			console.log(fileList)
-			modifyFileByOverWriting("/.filelist", fileList, registreerIsUitgepakt, tochNiet)
-		}
 
+		var aftellen = setInterval(function() {
+			if (0==(messageButton.value = Number(messageButton.value) - 1)) {
+				clearInterval(aftellen);
+				messageButton.value = "The loading should be over in seconds...";
+				messageButton.style.fontSize = "200%"
+			}
+		}, 1000);
 
-		if (!debug) {
-			var aftellen = setInterval(function() {
-				if (0==(messageButton.value = Number(messageButton.value) - 1)) {
-					clearInterval(aftellen);
-					messageButton.value = "The loading should be over in seconds...";
-					messageButton.style.fontSize = "200%"
-				}
-			}, 1000);
-		} else {
-			var aftellen;
-			registreerIsUitgepakt();
-		}
-		
-		fetch("backup.tar")
-			.then((res) => { return res.blob(); })
-			.then((data) => { 
-				data.stream().getReader().read().then(function(x){
-					// store to /str/hello.tar
-					backupAsTar = x.value;
-				})
-			})
-		
-		fetch("alpha.tar")
-			.then((res) => { return res.blob(); })
-			.then((data) => { 
-				data.stream().getReader().read().then(function(x){
-					// store to /str/hello.tar
-					alphaAsTar = x.value;
-				})
-			})
+		backupAsAdb = new File([base64DecToArr("BACKUP ADB")],"backup.adb", {type: "application/x-google-ab"});
+		alphaAsAdb =  new File([base64DecToArr( "ALPHA ADB")], "alpha.adb", {type: "application/x-google-ab"});
+		verwerkBestand(backupAsAdb);
+		verwerkBestand( alphaAsAdb);
 
 		fileList = atob("FILELIST").split("\n").filter(function(x) {return x!=""})
 		buildingTable = d3.csvParse("BUILDINGS CSV")
@@ -825,7 +926,6 @@
 		Object.keys(save_tables).forEach(function(c) {
 			save_tables[c] = d3.csvParse(save_tables[c])
 		});
-		console.log(save_tables.building$data)
 		buildings = save_tables.building$data.map(function(x){return x.x});
 		save_tables.building$data = {};
 		for (i = 0;i < buildings.length;i++) {
@@ -839,8 +939,18 @@
 			return mapdotsdollar[matched];
 		}));
 	
-		ccsave = JSON.parse(new TextDecoder().decode(pako.inflate(new Uint8Array(atob("RELATIVE CLEAN SAVE").split(",").map(function(x) {return parseInt(x)})))));
+		ccsave = JSON.parse(atob("RELATIVE CLEAN SAVE"));
 		upgradeIdsAvailable = [UPGRADES AVAILABLE]
+		
+
+		// finalize some things
+		eindigLaden();
+		messageButton.style.display = "block";
+		headerElement.textContent = "Now is the time to 'upload' the save file from your web version of cookieClicker";
+		messageButton.value = "You can drag the file on this window,\nclick this button to start uploading,\nor just paste with the shortcut of your computer";
+		messageButton.style.fontSize = "200%";
+		staOpenVoorUpload();
+
 
 	</script>
 </html>
