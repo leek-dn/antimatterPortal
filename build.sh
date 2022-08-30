@@ -39,6 +39,7 @@ vervangAMetScriptB "FILESAVER JS" static_assets/FileSaver.js
 vervangAMetScriptB "BYTESTREAM JS" static_assets/bytestream.js
 vervangAMetScriptB "UNTAR JS" static_assets/untar.js
 vervangAMetScriptB "TARTS JS" static_assets/tarts.js
+vervangAMetScriptB "B64 JS" static_assets/b64.adb
 for x in {1..15};do
  vervangAMetScriptB "D3 $x JS" static_assets/d3_$x.js
 done
