@@ -880,8 +880,14 @@
 					messageButton.value = "You uploaded more than 2 files at once.\nThis is probably not what you want.";
 					messageButton.style.fontSize = "200%";
 				} else {
-					data = verwerkBestand(ev.dataTransfer.items[0].getAsFile());
-					// TODO: should also look to the other file...
+					if (ev.dataTransfer.items[0].kind=="string") {
+						ev.dataTransfer.items[0].getAsString(function(x) {
+							data = verwerkBestand(new File([x],"websave.string", {type: "text/plain"}));
+						})
+					} else {
+						data = verwerkBestand(ev.dataTransfer.items[0].getAsFile());
+						// TODO: should also look to the other file...
+					}
 				}
 			} else {
 				// Use DataTransfer interface to access the file(s)
