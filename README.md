@@ -2,6 +2,23 @@
 CookieClicker web save converter to mobile/android platform and info around the process
 
 _________
+Currently this program works, but no builds are available
+(You have to build it yourself yet)
+_________
+
+How it works:
+
+Wait until the program is loaded. This will take only 2 seconds. Now enter your save. This can on a multitude of ways (last is best):
+* Drop the save as file
+* click on the button (with the text) and a file selection screen will open. Select your save file that you previously saved
+* click on the small bar that says click here first if you want to paste your save and paste your save (twice).
+* open cookieclicker and go to options. Then click on the export settings. A popup is displayed with your save as text selected. Now drag the text to somewhere on the page. You might try this multiple times but it works neverteless.
+
+It is also possible to upload your adb backup file to patch that one instead of the internal one. However there may not be much use case on that. Uploading the backup file can be done by dragging or submitting as well. Pasting or dragging the contents might result in a malformed document and might not work.
+
+_________
+
+
 
 This repository consist of a HTML page and the result is a self-contained HTML-page that is able to convert the save. Even though it does not convert the other way around, checking this repo will help you in achieving this goal. The same for combining two saves. If you actually implement this on the page I will obviously accept your pull-request.
 
@@ -16,7 +33,7 @@ The websave is generated using the function Game.WriteSave (in http://orteil.das
 * [X] Building Data
 * [X] Upgrades
 * [X] Achievements
-* [ ] Game Buffs
+* [ ] Game Buffs (think like frenzy effect, clot)
 * [ ] Mod Data
 
 (checked who are fully converted)
