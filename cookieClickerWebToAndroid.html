@@ -89,10 +89,6 @@
 			border: none;
 		}
 
-		@keyframes spin {
-			0% { transform: rotate(0deg); }
-			100% { transform: rotate(360deg); }
-		}
 	</style>
 	<body ondrop="dropHandler(event);" ondragover="dragOverHandler(event)" oncontextmenu = '
 		disp = document.getElementById("idChoice");
@@ -463,23 +459,20 @@
 				ccsave.achievs[ak[i]] = achievements_as_list[ak[i]];
 			}
 			/*
-			// the path will change later possibly
-			modifyFileByOverWriting(`/apps/${appid}/f/CookieClickerSave` + (alpha.checked?"Test":"") + ".txt", JSON.stringify(ccsave), function(w) {
-				// if alpha version is requested...
-				if (alpha.checked) {
-					aToBFile("000005.ldb", function(x1) {
-						aToBFile("000016.ldb", function(x2) {
-							aToBFile("000018.log", function(x3) {
-								aToBFile("000019.ldb", function(x4) {
-									aToBFile("000021.log", function(x5) {
-										aToBFile("000022.ldb", function(x6) {
-											aToBFile("CURRENT", function(x7) {
-												aToBFile("LOCK", function(x8) {
-													aToBFile("LOG", function(x9) {
-														aToBFile("LOG.old", function(x10) {
-															aToBFile("MANIFEST-000001", function(x11) {
-																finalizeBackupForDownloadButFirstAppId()
-															})
+			// if alpha version is requested...
+			if (alpha.checked) {
+				aToBFile("000005.ldb", function(x1) {
+					aToBFile("000016.ldb", function(x2) {
+						aToBFile("000018.log", function(x3) {
+							aToBFile("000019.ldb", function(x4) {
+								aToBFile("000021.log", function(x5) {
+									aToBFile("000022.ldb", function(x6) {
+										aToBFile("CURRENT", function(x7) {
+											aToBFile("LOCK", function(x8) {
+												aToBFile("LOG", function(x9) {
+													aToBFile("LOG.old", function(x10) {
+														aToBFile("MANIFEST-000001", function(x11) {
+															finalizeBackupForDownloadButFirstAppId()
 														})
 													})
 												})
@@ -490,49 +483,19 @@
 							})
 						})
 					})
-				} else {
-					finalizeBackupForDownloadButFirstAppId()
-				}
-			}, function(w) {
-				userMessages.push("Could not store the created save to a file...");
-				userMessages.push("You should not see this error...");
-				eindigLaden();
-			});
+				})
+			} else {
+				finalizeBackupForDownloadButFirstAppId()
+			}
 			*/
 		}
 		// copy contents of actualname to localstorage leveldb/actualname
 		function aToBFile(actualName, positiveCallBack) {
-			fileContents(actualName, function(x1) {
-				modifyFileByOverWriting(`/apps/${appid}/r/app_webview/Default/Local Storage/leveldb/${actualName}`, x1, function(y1) {
-					positiveCallBack(y1);
-				}, function(y1) {
-					console.log("Error: this shouldn't be happening..." + actualName)
-				})
-			}, function(x1) {
+			modifyFileByOverWriting(`/apps/${appid}/r/app_webview/Default/Local Storage/leveldb/${actualName}`, alphaBestanden[actualName], function(y1) {
+				positiveCallBack(y1);
+			}, function(y1) {
 				console.log("Error: this shouldn't be happening..." + actualName)
 			})
-		}
-		
-		// this function turns the backup files in virtual filesystem of Cheerp
-		// into a downloadable file that is presented to the user, or an error
-		// but first makes the id of the app/backup right of applicable
-		function finalizeBackupForDownloadButFirstAppId() {
-			if (getId()=="org.dashnet.cookieclicker") {
-				opslaanBestand();
-			} else {
-				deAppId = getId();
-				// rename into files
-				modifyFileByReplacing("/apps/${appid}/_manifest", "${appid}", deAppId, function(x){
-					// rename .filelist
-					modifyFileByReplacing("/.filelist", "${appid}", deAppId, function(x){
-						// rename all files
-					}, function(y) {
-						console.log("error renaming filelist");
-					});
-				}, function(y) {
-					console.log("error modifiying manifest");
-				});
-			}
 		}
 		
 		// this function turns the backup files in virtual filesystem of Cheerp
