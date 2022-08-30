@@ -12,7 +12,7 @@ Wait until the program is loaded. This will take only 2 seconds. Now enter your 
 * Drop the save as file
 * click on the button (with the text) and a file selection screen will open. Select your save file that you previously saved
 * click on the small bar that says click here first if you want to paste your save and paste your save (twice).
-* open cookieclicker and go to options. Then click on the export settings. A popup is displayed with your save as text selected. Now drag the text to somewhere on the page. You might try this multiple times but it works neverteless.
+* open cookieclicker and go to options. Then click on the `export save` button. A popup is displayed with your save as text selected. Now drag the text to somewhere on the page. You might try this multiple times but it works in the end.
 
 It is also possible to upload your adb backup file to patch that one instead of the internal one. However there may not be much use case on that. Uploading the backup file can be done by dragging or submitting as well. Pasting or dragging the contents might result in a malformed document and might not work.
 
@@ -43,6 +43,67 @@ These are splitted with a `|`-sign. Within these categories things are splitted 
 Please note that this wikia is incomplete for the current version, but the information is still usefull. The main.js file can complete our understanding of the save.
 
 The android save is completely different encoded. This is simply a JSON file. The JSON file is stored in a file called `/data/data/{APPID}/files/CookieClickerSave.txt` where **{APPID}** is for the official cookieClicker apk `org.dashnet.cookieclicker`. However without root access this file cannot be opened by any app on your phone but (that version of)CookieClicker. Even though root access to your phone seemed quite logical to me, other people (and android phone vendors) think otherwise. There is however another way to access that file. This is the backup system. By means of the ADB program (android debug bridge) (refer to https://www.xda-developers.com/install-adb-windows-macos-linux/ if you want to download the program). One can make a backup of an app or its data. This option is actually depricated, but still functional. So by entering `adb backup org.dashnet.cookieclicker -f backup.adb` a backup of the official cookieclicker app is made to the file `backup.adb`. `adb restore backup.adb` will restore that backup to the device. Now the backup format is actually a header of 24 characters, then zlib compression of the rest of the data. Having decompressed the rest results in a `.tar` file, a Tape ARchive. This is just a file format to describe multiple files within one file. So basically anyone knows .zip and .zip is compressing (using less data to still describe the same data) and combining files. The .adb file is conceptually the same, but now it has a header and uses different techiniques (tar for combining and zlib for compressing). Now there is one more thing to know to grasp this format and that is that the order of the files in the tar/adb file matters! If the order is not correct, files will not be restored and nothing (seems to) happens. So it is very important to remain the order.
+
+This is a stripped down version of a backup file of both vanilla cookieclicker and CookieClickerTrix backupped. Some files will be visible in the backup that are not shown here, but these are not relevant for the structure, and are more related to ads services (to my understanding).
+```
+apps
+├── org.dashnet.cookieclicker
+│   ├── f
+│   │   ├── CookieClickerSaveTest.txt
+│   │   └── CookieClickerSave.txt
+│   ├── _manifest
+│   ├── r
+│   │   └── app_webview
+│   │       └── Default
+│   │           ├── Local Storage
+│   │           │   └── leveldb
+│   │           │       ├── 000005.ldb
+│   │           │       ├── 000016.ldb
+│   │           │       ├── 000018.log
+│   │           │       ├── 000019.ldb
+│   │           │       ├── CURRENT
+│   │           │       ├── LOG
+│   │           │       ├── LOG.old
+│   │           │       └── MANIFEST-000001
+│   │           ├── Session Storage
+│   │           │   ├── 000003.log
+│   │           │   ├── CURRENT
+│   │           │   ├── LOG
+│   │           │   └── MANIFEST-000001
+│   │           └── Web Data
+│   └── sp
+│       ├── admob_user_agent.xml
+│       ├── admob.xml
+│       └── WebViewChromiumPrefs.xml
+└── org.dashnet.cookieclickertrix
+    ├── f
+    │   ├── CookieClickerSaveTest.txt
+    │   └── CookieClickerSave.txt
+    ├── _manifest
+    ├── r
+    │   └── app_webview
+    │       └── Default
+    │           ├── Local Storage
+    │           │   └── leveldb
+    │           │       ├── 000005.ldb
+    │           │       ├── 000016.ldb
+    │           │       ├── 000018.log
+    │           │       ├── 000019.ldb
+    │           │       ├── CURRENT
+    │           │       ├── LOG
+    │           │       ├── LOG.old
+    │           │       └── MANIFEST-000001
+    │           ├── Session Storage
+    │           │   ├── 000003.log
+    │           │   ├── CURRENT
+    │           │   ├── LOG
+    │           │   └── MANIFEST-000001
+    │           └── Web Data
+    └── sp
+        ├── admob_user_agent.xml
+        ├── admob.xml
+        └── WebViewChromiumPrefs.xml
+```
 
 #### CookieClicker Trix
 
@@ -119,6 +180,7 @@ So then I decided to use another approach to the backup file. In the end I imple
 | UNTAR JS      | extracting tars                               | static_assets/untar.js      |
 | TARTS JS      | creating tars                                 | static_assets/tarts.js      |
 | D3 JS         | parsing CSV’s                                 | static_assets/d3.js         |
+| b64 JS        | base64 that requires binairy data             | static_assets/b64.js        |
 
 
 ### buildings
