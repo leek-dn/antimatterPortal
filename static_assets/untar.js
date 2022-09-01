@@ -67,7 +67,7 @@ function TarLocalFile(bstream) {
         // console.info("  This is a regular file.");
         var sizeInBytes = parseInt(this.size);
         this.fileData = new Uint8Array(bstream.bytes.buffer, bstream.ptr, this.size);
-        if (this.name.length > 0 && this.size > 0 && this.fileData && this.fileData.buffer) {
+        if (this.name.length > 0 && this.size >= 0 && this.fileData && this.fileData.buffer) {
             this.isValid = true;
         }
     } else if (this.typeflag == 5) {

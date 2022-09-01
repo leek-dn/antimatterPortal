@@ -17,7 +17,7 @@
 			// csv parsing
 			D3 JS
 			// binairy base64 parsing
-			b64 JS
+			B64 JS
 		</script>
 	</head>
 	<style>
@@ -120,15 +120,13 @@
 		</div>
 	</body>
 	<script>
-	
-		var readyForUpload = false;
-		// to store the datas
-		var backupAsTar, alphaAsTar;
+		// this variable might not even be relevant anymore
+		var readyForUpload = false, customSaveUsed;
+		// to store the data
 		var backupAsAdb, alphaAsAdb;
-		
-		var backupData;
-		var userMessages = [];
 		var bestanden = {}, alphaBestanden = {}, appid = "";
+		
+		var userMessages = [];
 
 		// variables needed for the actual conversion
 		var orig_full_save;
@@ -215,8 +213,11 @@
 		// check if the file is present in the virtual filesystem
 		// if it does, return file contents, if not return empty string
 		function fileContents(filename, yes = function(x) {console.log(x)}, no) {
-			// TODO...
-			return ""
+			if (typeof bestanden[filename]!="undefined") {
+				return bestanden[filename].fileData;
+			} else {
+				return ""
+			}
 		}
 		function listAll() {
 			for (var i = 0;i < bestanden.length;i++) {
@@ -230,20 +231,29 @@
 			// places the source dir after the longest available path
 			// TODO
 		}
+		// returns the number of equal fields from the first until a non matching
+		function splittedEqual(s1, s2) {
+			for (i = 0;i < Math.min(s1.length, s2.length);i++) {
+				if (s1[i]!=s2[i]) return i;
+			}
+			Math.min(s1.length, s2.length);
+		}
+
 		// store file in bestanden
 		// this function does not work if the file does not exist
 		function storeToFile(filename, data) {
+			matching = 0;
 			filename = filename.replace(/^\//, "");
+			fs = filename.split("/")
 			for (var i = 0;i < bestanden.length;i++) {
 				if (bestanden[i].filename==filename) {
 					bestanden[i].fileData = data;
 					return true;
 				}
+				se = splittedEqual(bestanden[i].filename.split("/"), fs);
 			}
-			
-			// TODO if the file does not exist
-			debugger
-
+			console.log(filename);
+			// TODO: slove to to process not stored files
 		}
 
 		// this function is called on reading the file
@@ -458,57 +468,10 @@
 			for (var i = 0;i < ak.length - 1;i++) {
 				ccsave.achievs[ak[i]] = achievements_as_list[ak[i]];
 			}
-			/*
-			// if alpha version is requested...
-			if (alpha.checked) {
-				aToBFile("000005.ldb", function(x1) {
-					aToBFile("000016.ldb", function(x2) {
-						aToBFile("000018.log", function(x3) {
-							aToBFile("000019.ldb", function(x4) {
-								aToBFile("000021.log", function(x5) {
-									aToBFile("000022.ldb", function(x6) {
-										aToBFile("CURRENT", function(x7) {
-											aToBFile("LOCK", function(x8) {
-												aToBFile("LOG", function(x9) {
-													aToBFile("LOG.old", function(x10) {
-														aToBFile("MANIFEST-000001", function(x11) {
-															finalizeBackupForDownloadButFirstAppId()
-														})
-													})
-												})
-											})
-										})
-									})
-								})
-							})
-						})
-					})
-				})
-			} else {
-				finalizeBackupForDownloadButFirstAppId()
-			}
-			*/
 		}
 		// copy contents of actualname to localstorage leveldb/actualname
-		function aToBFile(actualName, positiveCallBack) {
-			modifyFileByOverWriting(`/apps/${appid}/r/app_webview/Default/Local Storage/leveldb/${actualName}`, alphaBestanden[actualName], function(y1) {
-				positiveCallBack(y1);
-			}, function(y1) {
-				console.log("Error: this shouldn't be happening..." + actualName)
-			})
-		}
-		
-		// this function turns the backup files in virtual filesystem of Cheerp
-		// into a downloadable file that is presented to the user, or an error
-		function opslaanBestand(bestandenVoorTar) {
-			const tar = tarts(bestandenVoorTar);
-			compressedData = window.pako.deflate(tar);
-			var adb = new Uint8Array(compressedData.length + header.length);
-			adb.set(header);
-			adb.set(compressedData, header.length);
-			var adbblob = new Blob([adb], {type: "application/x-google-ab; charset=binary"});
-			saveAs(adbblob, "yourBackup.adb");
-
+		function aToBFile(actualName) {
+			storeToFile(`/apps/${appid}/r/app_webview/Default/Local Storage/leveldb/${actualName}`, alphaBestanden.filter((data) => data.name==actualName)[0].fileData)
 		}
 		
 		// decode the save to its textual splitted form and then call the verwerkSave function
@@ -592,9 +555,22 @@
 		
 		function maakEnSave(bestanden, ccsave) {
 			// convert the websave en sla het op
-			storeToFile(`apps/${appid}/f/CookieClickerSave.txt`, JSON.stringify(ccsave))
 			toId = getId();
 			modifyFileByReplacing(`apps/${appid}/_manifest`, appid, toId);
+			if (customSaveUsed) {
+				storeToFile(`apps/${appid}/f/CookieClickerSave.txt`, JSON.stringify(ccsave));
+				storeToFile(`apps/${appid}/f/CookieClickerSaveTest.txt`, JSON.stringify(ccsave));
+			} else {
+				if (alpha.checked) {
+					alphaBestanden.map(function(x) {
+						aToBFile(x.name);
+						return x.name
+					});
+					storeToFile(`apps/${appid}/f/CookieClickerSaveTest.txt`, JSON.stringify(ccsave));
+				} else {
+					storeToFile(`apps/${appid}/f/CookieClickerSave.txt`, JSON.stringify(ccsave));
+				}
+			}
 			storeTar = [];
 			for (var i = 0; i < bestanden.length;i++) {
 				if (bestanden[i].filename!=undefined) {
@@ -602,6 +578,7 @@
 				}
 			}
 			oplaanBestand(storeTar)
+			headerElement.textContent = "Now use 'adb restore yourBackup.adb' while having your phone connected (and USB debugging enabled)"
 		}
 			
 		// this function processes the file when it is uploaded
@@ -626,7 +603,14 @@
 						alphaBestanden = deData;
 					} else {
 						// normale backup
+						if (typeof bestanden.length!="undefined") {
+							customSaveUsed = true;
+							document.getElementById('alphaHolder').style.display = "none";
+						}
 						bestanden = deData;
+						// I expect that the first backup is that of CookieClicker
+						// This is true for 1-app-backups
+						// but not for all...
 						appid = bestanden[0].filename.split("/")[1];
 						if (saveGeladen) maakEnSave(bestanden, ccsave);
 					}

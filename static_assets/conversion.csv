@@ -54,7 +54,7 @@ miscellaneous.game.data$sugar.lump.type||num
 miscellaneous.game.data$upgrades.in.vault||commaList
 building.data$.$amount.owned|buildings$.$amount|num
 building.data$.$amount.bought|buildings$.$bought|num
-building.data$.$amount.owned|buildings$.$amountMax|num
+building.data$.$amount.bought.ever|buildings$.$amountMax|num
 building.data$.$cookies.produced|buildings$.$cookiesMade|num
 building.data$.$level|buildings$.$level|num
 preferences$particles|settings$cookiepops|num

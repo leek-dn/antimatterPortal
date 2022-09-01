@@ -5,3 +5,4 @@
 "level","1","Level of this building"
 "minigame$data","to do",NA
 "muted","0","Is this building muted? (0: no, 1: yes)"
+"amount$bought$ever","0","Amount of this building bought ever"
