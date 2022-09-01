@@ -2,8 +2,8 @@
 CookieClicker web save converter to mobile/android platform and info around the process
 
 _________
-Currently this program works, but no builds are available
-(You have to build it yourself yet)
+Currently this program works (including alpha saves), but no builds are available
+(You have to build it yourself yet unless you are given a build)
 _________
 
 How it works:
@@ -193,6 +193,7 @@ How the building csv looks like
 "level","1","Level of this building"
 "minigame$data","to do",NA
 "muted","0","Is this building muted? (0: no, 1: yes)"
+"amount$bought$ever","0","Amount of this building bought ever"
 ```
 
 The buildings.csv file is generated from the Wikia and is a table that resembles the items in a building save item. Because this is a csv, it is parsed using d3, a library that focuses mostly on generating figures.
@@ -216,3 +217,22 @@ ISC License is for static_assets/d3.js (https://github.com/d3/d3/blob/main/LICEN
 ## R script
 
 The R script is an implementation of the conversion process as well. This script however currently requires an folder where the backup is stored ('backupfolder'). Also it requires you to store the save in a file called backup on level above this repo, or in clipboard and select the right line to execute. As you can see, this script is not for non developers that want a solution that just works. For that, the HTML file is made. Parts of the R script generate files required for het HTML file.
+
+## What the messages on the button mean?
+
+It means that the metadata on which the save is mapped is (no longer) enough to represent the save.
+
+## Resolved table
+
+| What                                         | Resolved?                                                                                      |
+|----------------------------------------------|------------------------------------------------------------------------------------------------|
+| Game Version                                 | Yes, by doing nothing                                                                          |
+| Empty                                        | Yes, by doing nothing                                                                          |
+| Run Details                                  | Yes (at least partially)                                                                       |
+| Preferences                                  | Partially, for not all settings are available in mobile+mobile has settings that are not in web|
+| Miscellaneous Game Data                      | Partially, seasons, etc. don't work on mobile. I might made mistakes in this, so you can check |
+| Building Data                                | Fully, except for mute/minigame data                                                           |
+| Upgrades                                     | Yes, new upgrades might require a improved relative_cleansave file                             |
+| Achievements                                 | Yes, new upgrades might require a improved relative_cleansave file                             |
+| Game Buffs (think like frenzy effect, clot)  | Not implemented                                                                                |
+| Mod Data                                     | Not implemented, there are multiple mods, so this can result in a lot of code                  |
