@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+	<!-- This document is licenced under MIT licence. See LICENCE file -->
 	<head>
 		<meta charset="utf-8" />
-		<title>CookieClicker Save Loader</title>
+		<title>Antimatter Portal</title>
+		<link rel="shortcut icon" href="data:image/icon;base64,AAABAAEAEBAQAAAAAAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAA
+AAAAAAD///8AS3CVAB8jPgA4PV4AFyxJACJAZQAuTG8AGzdaADVcgwCfvs8AKC1SAA0WJwBhlLYA
+EyI8AEt+pAA2ZJMAAAAAAAAAAAAAAAvUu7AAAAAL1lV4NLAAALuE/63mSwAARv2v1e9kAAtW7s7o
+39PQC3icnJnJttAEWMHunu73sA2M6jqT/OFAAnnKE6nDT9ALX+41n9OlsABH9+HuGGMAALV40/WI
+2wAACz2miG2wAAAAAk1LsAAAAAAAAAAAAAD//wAA+B8AAOAHAADAAwAAwAMAAIABAACAAQAAgAEA
+AIABAACAAQAAgAEAAMADAADAAwAA4AcAAPgfAAD//wAA">
 		<script>
 			// for the compression of adb files
 			PAKO JS
@@ -13,8 +20,10 @@
 			// for decompressing tar files
 			UNTAR JS
 			// for   compressing tar files
+			// The following 90 lines are licenced under WTFPL. See http://www.wtfpl.net/ for more details.
 			TARTS JS
 			// csv parsing
+			// the following line is licenced under ISC License, see https://github.com/d3/d3/blob/main/LICENSE
 			D3 JS
 			// binairy base64 parsing
 			B64 JS
@@ -30,14 +39,14 @@
 			animation: bgcolor 10s infinite;
 			-webkit-animation-direction: alternate;
 			animation-direction: alternate;
-		}	
+		}
 
 		@keyframes bgcolor {
 			0%  {background-color: #45a3e5 }
 			30% {background-color: #66bf39 }
-			60% {background-color: #eb670f}
-			90% {background-color: #f35}
-			100%{background-color: #864cbf}
+			60% {background-color: #eb670f }
+			90% {background-color: #f35    }
+			100%{background-color: #864cbf }
 		}
 
 		@keyframes bgcolornext {
@@ -87,31 +96,45 @@
 			-webkit-animation-direction: alternate;
 			animation-direction: alternate;
 			border: none;
+			width: 80%;
+			bottom: 10%;
+			position: absolute;
+			height: 70%;
+			font-size: 1000%;
+			left: 10%;
+			top: 15%;
+		}
+		#licence {
+			border: none;
+			width: 90%;
+			bottom: 5%;
+			position: absolute;
+			height: 80%;
+			font-size: 200%;
+			background-color: green;
+			left: 5%;
+			top: 7%;
 		}
 
 	</style>
-	<body ondrop="dropHandler(event);" ondragover="dragOverHandler(event)" oncontextmenu = '
-		disp = document.getElementById("idChoice");
-		alphadisp = document.getElementById("alphaHolder");
-		if (disp.style.display == "block") {
-			disp.style.display = "none";
-			alphadisp.style.display = "none";
-		} else {
-			disp.style.display = "block";
-			alphadisp.style.display = "block";
-		}
-		return false;' >
+	<body ondrop="dropHandler(event);" ondragover="dragOverHandler(event)" oncontextmenu = 'rightClick();return false' >
 		<h1 id="header" style="font-size: 300%;position: absolute;top: 10px;left: 50px;  -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;">
 			Loading this application takes time...
 		</h1>
 		<input type="file" onchange="bestandwordingelezen(this)" style = "display: none;">
-		<input type="button" id="button" value="2" disabled=true style = "width: 80%;bottom: 10%;position: absolute;height: 70%;font-size: 1000%;left: 10%;top: 15%;" />
+		<input type="button" oncontextmenu='rightClick();return false' id="button" value="2" disabled=true style = "" />
 		<input type="text" id="pastefield" autofocus onpaste="plakken(this)" onfocusout="plakFocusKwijt(this)" placeholder="Click here first if you want to paste your save..." />
+		<div id="licence">
+			The web-app you are currently using, is <a href="https://mit-license.org/">MIT licenced</a>, except for D3, which is <a href="https://github.com/d3/d3/blob/main/LICENSE">ISC licenced</a> (MIT but changed words), and <i>tarts</i> is <a href="http://www.wtfpl.net/">WTFPL</a>. The conversion-required files are creative commons from <a href="https://cookieclicker.fandom.com/wiki/Save">Cookie Clicker Wiki</a>, but modified. By clicking 'Accept' you accept these licenses. Else please leave this site.<br/><br/>
+			<div onclick="document.getElementById('licence').style.display='none';">Accept</div>
+			<br/><br/>
+			See <a href="https://github.com/leek-dn/antimatterPortal">GitHub</a> for the source code of this web app.
+		</div>
 		<div style="bottom:0%;left:40%;position: absolute;display: none;" id = "idChoice">
 			<input onclick="lockSpecialIDfield(this)" checked type="radio" id="vccm" name="whatid" value="60">
 			<label onclick="lockSpecialIDfield(this)" for="vccm">Vanilla Cookie Clicker Mobile</label><br>  
 			<input onclick="lockSpecialIDfield(this)" type="radio" id="cct" name="whatid" value="60">
-			<label onclick="lockSpecialIDfield(this)" for="cct">Cookie Clicker Trix</label><br>  
+			<label onclick="lockSpecialIDfield(this)" for="cct">Cookie Clicker Trix</label><br>
 			<input type="radio" onclick="unlockSpecialIDfield(this)" id="other" name="whatid" value="100">
 			<label for="other" onclick="unlockSpecialIDfield(this)">Other: <input id="specialid" type="text" disabled=true placeholder="org.dashnet.idk"/></label><br><br>
 		</div>
@@ -146,6 +169,8 @@
 		var headerElement  = document.getElementById('header');
 		var textInputElement=document.getElementById('pastefield');
 		var alpha          = document.getElementById('alphaCheck');
+		var disp           = document.getElementById("idChoice");
+		var alphadisp      = document.getElementById("alphaHolder");
 
 		// function to call when one should/can upload
 		function staOpenVoorUpload() {
@@ -186,6 +211,17 @@
 		function eindigLaden() {
 			messageButton.style.display = "none";
 			clearInterval(aftellen);
+		}
+		
+		function rightClick() {
+			if (disp.style.display == "block") {
+				disp.style.display = "none";
+				alphadisp.style.display = "none";
+			} else {
+				disp.style.display = "block";
+				alphadisp.style.display = "block";
+			}
+			return false;
 		}
 		
 		// this function is called when is pasted
@@ -471,7 +507,9 @@
 		}
 		// copy contents of actualname to localstorage leveldb/actualname
 		function aToBFile(actualName) {
-			storeToFile(`/apps/${appid}/r/app_webview/Default/Local Storage/leveldb/${actualName}`, alphaBestanden.filter((data) => data.name==actualName)[0].fileData)
+			storeToFile(`/apps/${appid}/r/app_webview/Default/Local Storage/leveldb/${actualName}`,
+			   alphaBestanden.filter((data) => data.name==actualName)[0].fileData
+			)
 		}
 		
 		// decode the save to its textual splitted form and then call the verwerkSave function
@@ -505,23 +543,19 @@
 			var y = new Uint8Array(x)
 			if (new TextDecoder().decode(y.slice(0, 15))=="ANDROID BACKUP\n") {
 				return "adb";
-			} else {
-				if (new TextDecoder().decode(y.slice(257, 257+5))=="ustar") {
-					return "tar";
-				} else {
-					if (new TextDecoder().decode(y.slice(x.length-30, x.length)).trim().endsWith("%21")) {
-						return "websave";
-					} else {
-						if (new TextDecoder().decode(y.slice(0, 1))=="{") {
-							return "androidsave";
-						} else {
-							return "unknown";
-						}
-					}
-				}
 			}
+			if (new TextDecoder().decode(y.slice(257, 257+5))=="ustar") {
+				return "tar";
+			}
+			if (new TextDecoder().decode(y.slice(x.length-30, x.length)).trim().endsWith("%21")) {
+					return "websave";
+			}
+			if (new TextDecoder().decode(y.slice(0, 1))=="{") {
+				return "androidsave";
+			}
+			return "unknown";
 		}
-		
+
 		function adbToTar(data) {
 			return window.pako.inflate(data.subarray(24));
 		}
@@ -727,7 +761,7 @@
 		eindigLaden();
 		messageButton.style.display = "block";
 		headerElement.textContent = "Now is the time to 'upload' the save file from your web version of cookieClicker";
-		messageButton.value = "You can drag the file on this window,\nclick this button to start uploading,\nor just paste with the shortcut of your computer";
+		messageButton.value = "You can drag the file on this window,\ndrag the save as text on this window,\nclick this button to start uploading,\nor just paste with the shortcut of your computer";
 		messageButton.style.fontSize = "200%";
 		staOpenVoorUpload();
 
